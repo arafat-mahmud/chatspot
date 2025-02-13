@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'signin.dart'; // Import the SignInPage
 
 class SignUpPage extends StatelessWidget {
+  final TextEditingController _dobController = TextEditingController();
+  String? _selectedGender; // Variable to store selected gender
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,7 +22,6 @@ class SignUpPage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 24.0,
                   fontWeight: FontWeight.bold,
-                  fontFamily: 'Chivo',
                   color: Colors.black,
                 ),
               ),
@@ -30,7 +32,6 @@ class SignUpPage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14.0,
                   color: Colors.grey[600],
-                  fontFamily: 'Chivo',
                 ),
               ),
               SizedBox(height: 32),
@@ -43,9 +44,6 @@ class SignUpPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                style: TextStyle(
-                  fontFamily: 'Chivo',
-                ),
               ),
               SizedBox(height: 16),
 
@@ -57,9 +55,51 @@ class SignUpPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                style: TextStyle(
-                  fontFamily: 'Chivo',
+              ),
+              SizedBox(height: 16),
+
+              // Date of Birth Field
+              TextField(
+                controller: _dobController,
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: 'Date of Birth',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
                 ),
+                onTap: () async {
+                  DateTime? pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(1900),
+                    lastDate: DateTime.now(),
+                  );
+                  if (pickedDate != null) {
+                    _dobController.text =
+                        "${pickedDate.toLocal()}".split(' ')[0];
+                  }
+                },
+              ),
+              SizedBox(height: 16),
+
+              // Gender Field
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Gender',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+                items: ['Male', 'Female', 'Other']
+                    .map((gender) => DropdownMenuItem(
+                          value: gender,
+                          child: Text(gender),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  _selectedGender = value; // Update selected gender
+                },
               ),
               SizedBox(height: 16),
 
@@ -72,9 +112,6 @@ class SignUpPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                style: TextStyle(
-                  fontFamily: 'Chivo',
-                ),
               ),
               SizedBox(height: 16),
 
@@ -86,9 +123,6 @@ class SignUpPage extends StatelessWidget {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
-                ),
-                style: TextStyle(
-                  fontFamily: 'Chivo',
                 ),
               ),
               SizedBox(height: 16),
@@ -110,7 +144,6 @@ class SignUpPage extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16.0,
                     color: Colors.white,
-                    fontFamily: 'Chivo',
                   ),
                 ),
               ),
@@ -128,7 +161,6 @@ class SignUpPage extends StatelessWidget {
                   'Already have an account? Sign in',
                   style: TextStyle(
                     color: Colors.black,
-                    fontFamily: 'Chivo',
                   ),
                 ),
               ),

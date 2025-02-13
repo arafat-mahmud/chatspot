@@ -21,7 +21,6 @@ class SettingsPage extends StatelessWidget {
               );
             },
           ),
-          Divider(),
           ListTile(
             leading: Icon(Icons.notifications),
             title: Text('Notifications'),
@@ -29,7 +28,6 @@ class SettingsPage extends StatelessWidget {
               // Handle notification settings
             },
           ),
-          Divider(),
           ListTile(
             leading: Icon(Icons.lock),
             title: Text('Privacy'),
@@ -37,7 +35,6 @@ class SettingsPage extends StatelessWidget {
               // Handle privacy settings
             },
           ),
-          Divider(),
           ListTile(
             leading: Icon(Icons.help),
             title: Text('Help & Support'),
@@ -45,7 +42,6 @@ class SettingsPage extends StatelessWidget {
               // Handle help and support
             },
           ),
-          Divider(),
           ListTile(
             leading: Icon(Icons.logout),
             title: Text('Logout'),
