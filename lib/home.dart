@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'drawerbutton.dart'; // Import the CustomDrawer
-import 'user_data/chats.dart'; // Import the ChatsPage
+import 'user_data/chat/chats.dart'; // Import the ChatsPage
 import 'user_data/calls.dart'; // Import the CallsPage
 
 class HomePage extends StatefulWidget {
