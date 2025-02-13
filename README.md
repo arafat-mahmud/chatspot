@@ -96,4 +96,3 @@ lib/
 4. **Create UI & State Management** using Provider/Riverpod/Bloc
 5. **Testing & Deployment**
 
-Would you like me to generate sample Dart files for authentication, chat, or WebRTC setup? 🚀
