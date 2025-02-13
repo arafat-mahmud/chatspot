@@ -11,6 +11,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Auth Example',
+      theme: ThemeData(
+        fontFamily: 'Chivo',
+      ),
       home: SignInPage(),
     );
   }
