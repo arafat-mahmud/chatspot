@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'users_info/settings.dart'; // Updated path
-import 'auth/signin.dart'; // Import the SignInPage for logout
-import 'users_info/profile.dart'; // Updated path
+import 'views/settings/settings.dart'; // Updated path
+import 'views/auth/signin.dart'; // Import the SignInPage for logout
+import 'views/settings/profile.dart'; // Updated path
 
 class CustomDrawer extends StatelessWidget {
   @override
