@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'user_chat_screen.dart'; // Import the new user chat screen
 
 class ChatList extends StatefulWidget {
   @override
@@ -7,10 +8,10 @@ class ChatList extends StatefulWidget {
 
 class _ChatListState extends State<ChatList> {
   final List<String> chatItems = [
-    'Chat with Alice',
-    'Chat with Bob',
-    'Chat with Charlie',
-    'Chat with Dave',
+    'Alice',
+    'Bob',
+    'Charlie',
+    'Dave',
   ];
 
   late List<String> filteredChatItems;
@@ -78,7 +79,7 @@ class _ChatListState extends State<ChatList> {
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                            ChatScreen(chatName: filteredChatItems[index]),
+                            UserChatScreen(userName: filteredChatItems[index]),
                       ),
                     ).then((_) {
                       // Ensure the search bar is unfocused when returning
