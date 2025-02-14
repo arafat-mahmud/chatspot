@@ -82,6 +82,9 @@ class _ChatListState extends State<ChatList> {
                       ),
                     ).then((_) {
                       // Ensure the search bar is unfocused when returning
+                      if (searchFocusNode.hasFocus) {
+                        searchFocusNode.unfocus();
+                      }
                       searchFocusNode.unfocus();
                     });
                   },
