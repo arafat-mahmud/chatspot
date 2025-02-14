@@ -4,7 +4,7 @@ import 'package:emoji_picker_flutter/emoji_picker_flutter.dart'; // Ensure this 
 class UserChatScreen extends StatefulWidget {
   final String userName;
 
-  UserChatScreen({required this.userName});
+  UserChatScreen({Key? key, required this.userName}) : super(key: key);
 
   @override
   _UserChatScreenState createState() => _UserChatScreenState();
@@ -58,21 +58,21 @@ class _UserChatScreenState extends State<UserChatScreen> {
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
-                IconButton(
-                  icon: Icon(Icons.emoji_emotions),
-                  onPressed: () {
-                    setState(() {
-                      _isEmojiVisible =
-                          !_isEmojiVisible; // Toggle emoji picker visibility
-                    });
-                  },
-                ),
                 Expanded(
                   child: TextField(
                     controller: _messageController,
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
                       border: OutlineInputBorder(),
+                      prefixIcon: IconButton(
+                        icon: Icon(Icons.emoji_emotions),
+                        onPressed: () {
+                          setState(() {
+                            _isEmojiVisible =
+                                !_isEmojiVisible; // Toggle emoji picker visibility
+                          });
+                        },
+                      ),
                       suffixIcon: IconButton(
                         icon: Icon(Icons.attach_file),
                         onPressed: () {
