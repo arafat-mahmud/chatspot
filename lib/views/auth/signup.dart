@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'signin.dart'; // Import the SignInPage
 
-class SignUpPage extends StatelessWidget {
+class SignUpPage extends StatefulWidget {
+  @override
+  _SignUpPageState createState() => _SignUpPageState();
+}
+
+class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _dobController = TextEditingController();
   String? _selectedGender; // Variable to store selected gender
 
@@ -98,7 +103,9 @@ class SignUpPage extends StatelessWidget {
                         ))
                     .toList(),
                 onChanged: (value) {
-                  _selectedGender = value; // Update selected gender
+                  setState(() {
+                    _selectedGender = value; // Update selected gender
+                  });
                 },
               ),
               SizedBox(height: 16),
@@ -137,7 +144,13 @@ class SignUpPage extends StatelessWidget {
                   backgroundColor: Colors.blue,
                 ),
                 onPressed: () {
-                  // Handle sign-up
+                  // Example usage of _selectedGender
+                  if (_selectedGender != null) {
+                    print('Selected Gender: $_selectedGender');
+                  } else {
+                    print('No gender selected');
+                  }
+                  // Handle sign-up logic here
                 },
                 child: Text(
                   'Sign up',
