@@ -3,6 +3,10 @@ import '../auth/signin.dart'; // Import the SignInPage
 import 'account_settings.dart'; // Import the AccountSettingsPage
 
 class SettingsPage extends StatelessWidget {
+  final void Function(ThemeData) setTheme; // Ensure this is non-nullable
+
+  SettingsPage({required this.setTheme}); // Constructor to accept the function
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,6 +47,13 @@ class SettingsPage extends StatelessWidget {
             },
           ),
           ListTile(
+            leading: Icon(Icons.palette),
+            title: Text('Theme'),
+            onTap: () {
+              _showThemeDialog(context);
+            },
+          ),
+          ListTile(
             leading: Icon(Icons.logout),
             title: Text('Logout'),
             onTap: () {
@@ -56,6 +67,52 @@ class SettingsPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showThemeDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select Theme'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                ListTile(
+                  title: Text('Light Theme'),
+                  onTap: () {
+                    setTheme(ThemeData.light()); // Set light theme
+                    Navigator.of(context).pop();
+                  },
+                ),
+                ListTile(
+                  title: Text('Dark Theme'),
+                  onTap: () {
+                    setTheme(ThemeData.dark()); // Set dark theme
+                    Navigator.of(context).pop();
+                  },
+                ),
+                ListTile(
+                  title: Text('System Default'),
+                  onTap: () {
+                    setTheme(ThemeData.fallback()); // Set system default theme
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'views/settings/settings.dart'; // Updated path
 import 'views/auth/signin.dart'; // Import the SignInPage for logout
 import 'views/settings/profile.dart'; // Updated path
+import 'main.dart'; // Import MyApp to access MyAppState
 
 class CustomDrawer extends StatelessWidget {
   @override
@@ -28,9 +29,7 @@ class CustomDrawer extends StatelessWidget {
               ),
             ),
             currentAccountPicture: CircleAvatar(
-              backgroundImage: AssetImage(
-                  'assets/images/profile.jpg'
-                  ),
+              backgroundImage: AssetImage('assets/images/profile.jpg'),
             ),
           ),
           ListTile(
@@ -49,7 +48,11 @@ class CustomDrawer extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => SettingsPage()),
+                MaterialPageRoute(builder: (context) {
+                  final myAppState =
+                      context.findAncestorStateOfType<MyAppState>();
+                  return SettingsPage(setTheme: myAppState!.setTheme);
+                }),
               );
             },
           ),
