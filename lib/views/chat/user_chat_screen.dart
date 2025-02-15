@@ -42,7 +42,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                     margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
                     padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                     decoration: BoxDecoration(
-                      color: isUser ? Colors.blue[300] : Colors.grey[300],
+                      color: isUser ? const Color.fromARGB(231, 11, 167, 244) : const Color.fromARGB(255, 255, 255, 255),
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(18),
                         topRight: Radius.circular(18),
@@ -63,7 +63,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                         SizedBox(height: 4),
                         Text(
                           _messages[index]['text'],
-                          style: TextStyle(color: Colors.black),
+                          style: TextStyle(color: const Color.fromARGB(255, 255, 255, 255)),
                         ),
                       ],
                     ),
