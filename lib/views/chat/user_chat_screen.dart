@@ -90,6 +90,11 @@ class _UserChatScreenState extends State<UserChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
+                    onTap: () {
+                      setState(() {
+                        _isEmojiVisible = false; // Close emoji picker when tapping the input field
+                      });
+                    },
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
                       border: OutlineInputBorder(),
