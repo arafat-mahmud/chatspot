@@ -13,6 +13,8 @@ class UserChatScreen extends StatefulWidget {
 class _UserChatScreenState extends State<UserChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   bool _isEmojiVisible = false; // Track the visibility of the emoji picker
+  List<Map<String, dynamic>>_messages =
+      []; // List to store chat messages and timestamps
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +40,50 @@ class _UserChatScreenState extends State<UserChatScreen> {
         children: [
           Divider(),
           Expanded(
-            child: ListView(
-                // This will contain the chat messages
-                ),
+            child: ListView.builder(
+              itemCount: _messages.length, // Count of messages
+              itemBuilder: (context, index) {
+                return Container(
+                  margin: EdgeInsets.symmetric(
+                      vertical: 4.0,
+                      horizontal: 8.0), // Margin around each message
+                  padding: EdgeInsets.all(10.0), // Padding inside the message
+                  decoration: BoxDecoration(
+                    color: Colors.blue[100], // Background color for the message
+                    borderRadius: BorderRadius.circular(8.0), // Rounded corners
+                  ),
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start, // Align text to the start
+                    children: [
+                      Text(
+                        _formatTimestamp(_messages[index][
+                            'timestamp']), // Display timestamp above the message
+                        style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey), // Style for timestamp
+                      ),
+                      SizedBox(
+                          height: 4), // Space between timestamp and message
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width *
+                              0.7, // Limit width to 70% of screen
+                        ),
+                        child: Container(
+                          color: Colors
+                              .blue[100], // Background color for the message
+                          child: Text(
+                            _messages[index]['text'], // Display each message
+                            style: TextStyle(color: Colors.black), // Text color
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
           if (_isEmojiVisible) // Show emoji picker if visible
             SizedBox(
@@ -99,7 +142,12 @@ class _UserChatScreenState extends State<UserChatScreen> {
   void _sendMessage() {
     String message = _messageController.text.trim();
     if (message.isNotEmpty) {
-      // Handle sending the message (e.g., add to chat list, send to server)
+      setState(() {
+        _messages.add({
+          'text': message, // Store the message text
+          'timestamp': DateTime.now(), // Store the current timestamp
+        });
+      });
       print("Message sent: $message"); // Replace with actual send logic
       _messageController.clear(); // Clear the input field after sending
     }
@@ -135,5 +183,16 @@ class _UserChatScreenState extends State<UserChatScreen> {
         );
       },
     );
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    String hour = timestamp.hour % 12 == 0
+        ? '12'
+        : (timestamp.hour % 12).toString(); // Convert to 12-hour format
+    String minute = timestamp.minute
+        .toString()
+        .padLeft(2, '0'); // Ensure two digits for minutes
+    String period = timestamp.hour >= 12 ? 'PM' : 'AM'; // Determine AM/PM
+    return "$hour:$minute $period"; // Format timestamp
   }
 }
