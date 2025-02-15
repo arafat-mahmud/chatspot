@@ -80,14 +80,14 @@ class SettingsPage extends StatelessWidget {
             child: ListBody(
               children: <Widget>[
                 ListTile(
-                  title: Text('Light Theme'),
+                  title: Text('Light'),
                   onTap: () {
                     setTheme(ThemeData.light()); // Set light theme
                     Navigator.of(context).pop();
                   },
                 ),
                 ListTile(
-                  title: Text('Dark Theme'),
+                  title: Text('Dark'),
                   onTap: () {
                     setTheme(ThemeData.dark()); // Set dark theme
                     Navigator.of(context).pop();
