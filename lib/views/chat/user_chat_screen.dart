@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:emoji_picker_flutter/emoji_picker_flutter.dart'; // Ensure this import is correct
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 
 class UserChatScreen extends StatefulWidget {
   final String userName;
@@ -12,9 +12,8 @@ class UserChatScreen extends StatefulWidget {
 
 class _UserChatScreenState extends State<UserChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  bool _isEmojiVisible = false; // Track the visibility of the emoji picker
-  List<Map<String, dynamic>> _messages =
-      []; // List to store chat messages and timestamps
+  bool _isEmojiVisible = false;
+  List<Map<String, dynamic>> _messages = [];
 
   @override
   Widget build(BuildContext context) {
@@ -22,18 +21,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
       appBar: AppBar(
         title: Text(widget.userName),
         actions: [
-          IconButton(
-            icon: Icon(Icons.video_call),
-            onPressed: () {
-              // Handle video call
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.call),
-            onPressed: () {
-              // Handle audio call
-            },
-          ),
+          IconButton(icon: Icon(Icons.video_call), onPressed: () {}),
+          IconButton(icon: Icon(Icons.call), onPressed: () {}),
         ],
       ),
       body: Column(
@@ -41,52 +30,52 @@ class _UserChatScreenState extends State<UserChatScreen> {
           Divider(),
           Expanded(
             child: ListView.builder(
-              itemCount: _messages.length, // Count of messages
+              itemCount: _messages.length,
               itemBuilder: (context, index) {
-                return Container(
-                  margin: EdgeInsets.symmetric(
-                      vertical: 4.0,
-                      horizontal: 8.0), // Margin around each message
-                  padding: EdgeInsets.symmetric(
-                      horizontal: 10.0,
-                      vertical: 6.0), // Adjust padding to be dynamic
-                  decoration: BoxDecoration(
-                    color: Colors.blue[100], // Background color for the message
-                    borderRadius:
-                        BorderRadius.circular(30.0), // Rounded corners
-                  ),
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start, // Align text to the start
-                    children: [
-                      Text(
-                        _formatTimestamp(_messages[index][
-                            'timestamp']), // Display timestamp above the message
-                        style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey), // Style for timestamp
+                bool isUser = _isUserMessage(index);
+                return Align(
+                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                    padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                    decoration: BoxDecoration(
+                      color: isUser ? Colors.blue[300] : Colors.grey[300],
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(18),
+                        topRight: Radius.circular(18),
+                        bottomLeft: isUser ? Radius.circular(18) : Radius.circular(0),
+                        bottomRight: isUser ? Radius.circular(0) : Radius.circular(18),
                       ),
-                      SizedBox(
-                          height: 4), // Space between timestamp and message
-                      Text(
-                        _messages[index]
-                            ['text'], // Display each message without background
-                        style: TextStyle(color: Colors.black), // Text color
-                      ),
-                    ],
+                    ),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.75,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _formatTimestamp(_messages[index]['timestamp']),
+                          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          _messages[index]['text'],
+                          style: TextStyle(color: Colors.black),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
             ),
           ),
-          if (_isEmojiVisible) // Show emoji picker if visible
+          if (_isEmojiVisible)
             SizedBox(
-              height: 250, // Adjust height as needed
+              height: 250,
               child: EmojiPicker(
                 onEmojiSelected: (category, emoji) {
                   setState(() {
-                    _messageController.text +=
-                        emoji.emoji; // Append selected emoji to the message
+                    _messageController.text += emoji.emoji;
                   });
                 },
               ),
@@ -105,8 +94,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                         icon: Icon(Icons.emoji_emotions),
                         onPressed: () {
                           setState(() {
-                            _isEmojiVisible =
-                                !_isEmojiVisible; // Toggle emoji picker visibility
+                            _isEmojiVisible = !_isEmojiVisible;
                           });
                         },
                       ),
@@ -121,9 +109,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                 ),
                 IconButton(
                   icon: Icon(Icons.send),
-                  onPressed: () {
-                    _sendMessage();
-                  },
+                  onPressed: _sendMessage,
                 ),
               ],
             ),
@@ -138,12 +124,12 @@ class _UserChatScreenState extends State<UserChatScreen> {
     if (message.isNotEmpty) {
       setState(() {
         _messages.add({
-          'text': message, // Store the message text
-          'timestamp': DateTime.now(), // Store the current timestamp
+          'text': message,
+          'timestamp': DateTime.now(),
+          'isUser': true,
         });
       });
-      print("Message sent: $message"); // Replace with actual send logic
-      _messageController.clear(); // Clear the input field after sending
+      _messageController.clear();
     }
   }
 
@@ -158,20 +144,13 @@ class _UserChatScreenState extends State<UserChatScreen> {
               ListTile(
                 leading: Icon(Icons.photo),
                 title: Text('Gallery'),
-                onTap: () {
-                  // Handle gallery option
-                  Navigator.pop(context);
-                },
+                onTap: () => Navigator.pop(context),
               ),
               ListTile(
                 leading: Icon(Icons.camera),
                 title: Text('Camera'),
-                onTap: () {
-                  // Handle camera option
-                  Navigator.pop(context);
-                },
+                onTap: () => Navigator.pop(context),
               ),
-              // Add more options if needed
             ],
           ),
         );
@@ -179,14 +158,14 @@ class _UserChatScreenState extends State<UserChatScreen> {
     );
   }
 
+  bool _isUserMessage(int index) {
+    return _messages[index]['isUser'] ?? true;
+  }
+
   String _formatTimestamp(DateTime timestamp) {
-    String hour = timestamp.hour % 12 == 0
-        ? '12'
-        : (timestamp.hour % 12).toString(); // Convert to 12-hour format
-    String minute = timestamp.minute
-        .toString()
-        .padLeft(2, '0'); // Ensure two digits for minutes
-    String period = timestamp.hour >= 12 ? 'PM' : 'AM'; // Determine AM/PM
-    return "$hour:$minute $period"; // Format timestamp
+    String hour = timestamp.hour % 12 == 0 ? '12' : (timestamp.hour % 12).toString();
+    String minute = timestamp.minute.toString().padLeft(2, '0');
+    String period = timestamp.hour >= 12 ? 'PM' : 'AM';
+    return "$hour:$minute $period";
   }
 }
