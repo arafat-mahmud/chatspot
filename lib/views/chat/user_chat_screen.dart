@@ -13,7 +13,7 @@ class UserChatScreen extends StatefulWidget {
 class _UserChatScreenState extends State<UserChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   bool _isEmojiVisible = false; // Track the visibility of the emoji picker
-  List<Map<String, dynamic>>_messages =
+  List<Map<String, dynamic>> _messages =
       []; // List to store chat messages and timestamps
 
   @override
@@ -47,10 +47,13 @@ class _UserChatScreenState extends State<UserChatScreen> {
                   margin: EdgeInsets.symmetric(
                       vertical: 4.0,
                       horizontal: 8.0), // Margin around each message
-                  padding: EdgeInsets.all(10.0), // Padding inside the message
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 10.0,
+                      vertical: 6.0), // Adjust padding to be dynamic
                   decoration: BoxDecoration(
                     color: Colors.blue[100], // Background color for the message
-                    borderRadius: BorderRadius.circular(8.0), // Rounded corners
+                    borderRadius:
+                        BorderRadius.circular(30.0), // Rounded corners
                   ),
                   child: Column(
                     crossAxisAlignment:
@@ -65,19 +68,10 @@ class _UserChatScreenState extends State<UserChatScreen> {
                       ),
                       SizedBox(
                           height: 4), // Space between timestamp and message
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width *
-                              0.7, // Limit width to 70% of screen
-                        ),
-                        child: Container(
-                          color: Colors
-                              .blue[100], // Background color for the message
-                          child: Text(
-                            _messages[index]['text'], // Display each message
-                            style: TextStyle(color: Colors.black), // Text color
-                          ),
-                        ),
+                      Text(
+                        _messages[index]
+                            ['text'], // Display each message without background
+                        style: TextStyle(color: Colors.black), // Text color
                       ),
                     ],
                   ),
