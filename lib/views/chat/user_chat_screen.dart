@@ -74,8 +74,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                 style: TextStyle(color: Colors.white),
                               ),
                               SizedBox(
-                                  width:
-                                      5), // Spacing between text and timestamp
+                                  width: 6 // Spacing between text and timestamp
+                                  ),
                               Text(
                                 _formatTimestamp(_messages[index]['timestamp']),
                                 style: TextStyle(
