@@ -36,39 +36,70 @@ class _UserChatScreenState extends State<UserChatScreen> {
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 bool isUser = _isUserMessage(index);
+                String messageText = _messages[index]['text'];
+                bool isShortMessage =
+                    messageText.length <= 5; // Adjust based on preference
+
                 return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment:
+                      isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
-                    margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                    padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
+                    margin:
+                        EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
                     decoration: BoxDecoration(
-                      color: isUser ? const Color.fromARGB(231, 11, 167, 244) : const Color.fromARGB(255, 255, 255, 255),
+                      color: isUser
+                          ? const Color.fromARGB(231, 11, 167, 244)
+                          : const Color.fromARGB(255, 255, 255, 255),
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(20),
                         topRight: Radius.circular(20),
-                        bottomLeft: isUser ? Radius.circular(20) : Radius.circular(0),
-                        bottomRight: isUser ? Radius.circular(22) : Radius.circular(20),
+                        bottomLeft:
+                            isUser ? Radius.circular(20) : Radius.circular(0),
+                        bottomRight:
+                            isUser ? Radius.circular(22) : Radius.circular(20),
                       ),
                     ),
                     constraints: BoxConstraints(
                       maxWidth: MediaQuery.of(context).size.width * 0.75,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          _messages[index]['text'],
-                          style: TextStyle(color: const Color.fromARGB(255, 255, 255, 255)),
-                        ),
-                        SizedBox(height: 1), //timestamp and message spacing
-                        Text(
-                          _formatTimestamp(_messages[index]['timestamp']),
-                          style: TextStyle(fontSize:10, color: Colors.grey[700]),
-                        ),
-                         
-                        
-                      ],
-                    ),
+                    child: isShortMessage
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                messageText,
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              SizedBox(
+                                  width:
+                                      5), // Spacing between text and timestamp
+                              Text(
+                                _formatTimestamp(_messages[index]['timestamp']),
+                                style: TextStyle(
+                                    fontSize: 10, color: Colors.grey[700]),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                messageText,
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              SizedBox(
+                                  height:
+                                      1), // Spacing between text and timestamp
+                              Text(
+                                _formatTimestamp(_messages[index]['timestamp']),
+                                style: TextStyle(
+                                    fontSize: 10, color: Colors.grey[700]),
+                              ),
+                            ],
+                          ),
                   ),
                 );
               },
@@ -94,7 +125,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
                     controller: _messageController,
                     onTap: () {
                       setState(() {
-                        _isEmojiVisible = false; // Close emoji picker when tapping the input field
+                        _isEmojiVisible =
+                            false; // Close emoji picker when tapping the input field
                       });
                     },
                     decoration: InputDecoration(
@@ -184,7 +216,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
   }
 
   String _formatTimestamp(DateTime timestamp) {
-    String hour = timestamp.hour % 12 == 0 ? '12' : (timestamp.hour % 12).toString();
+    String hour =
+        timestamp.hour % 12 == 0 ? '12' : (timestamp.hour % 12).toString();
     String minute = timestamp.minute.toString().padLeft(2, '0');
     String period = timestamp.hour >= 12 ? 'PM' : 'AM';
     return "$hour:$minute $period";
