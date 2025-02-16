@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'views/auth/signin.dart';
-import 'views/settings/settings.dart';
 
 void main() {
   runApp(MyApp());
