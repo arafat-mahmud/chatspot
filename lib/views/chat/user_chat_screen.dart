@@ -40,31 +40,33 @@ class _UserChatScreenState extends State<UserChatScreen> {
                   alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                    padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                    padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
                     decoration: BoxDecoration(
                       color: isUser ? const Color.fromARGB(231, 11, 167, 244) : const Color.fromARGB(255, 255, 255, 255),
                       borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(18),
-                        topRight: Radius.circular(18),
-                        bottomLeft: isUser ? Radius.circular(18) : Radius.circular(0),
-                        bottomRight: isUser ? Radius.circular(0) : Radius.circular(18),
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                        bottomLeft: isUser ? Radius.circular(20) : Radius.circular(0),
+                        bottomRight: isUser ? Radius.circular(22) : Radius.circular(20),
                       ),
                     ),
                     constraints: BoxConstraints(
                       maxWidth: MediaQuery.of(context).size.width * 0.75,
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          _formatTimestamp(_messages[index]['timestamp']),
-                          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
-                        ),
-                        SizedBox(height: 4),
                         Text(
                           _messages[index]['text'],
                           style: TextStyle(color: const Color.fromARGB(255, 255, 255, 255)),
                         ),
+                        SizedBox(height: 1), //timestamp and message spacing
+                        Text(
+                          _formatTimestamp(_messages[index]['timestamp']),
+                          style: TextStyle(fontSize:10, color: Colors.grey[700]),
+                        ),
+                         
+                        
                       ],
                     ),
                   ),
