@@ -1,0 +1,2 @@
+/Users/sanon/chatspot/android/app/.cxx/Debug/453h4b35/arm64-v8a/CMakeFiles/edit_cache.dir
+/Users/sanon/chatspot/android/app/.cxx/Debug/453h4b35/arm64-v8a/CMakeFiles/rebuild_cache.dir
