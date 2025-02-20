@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "5033739813",
+    "project_id": "chatspot-5af2e",
+    "storage_bucket": "chatspot-5af2e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:5033739813:android:32237ae105b0ce9a1e61cc",
+        "android_client_info": {
+          "package_name": "com.example.chatspot"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDC_vTmGIHBhRUbBhyKj8Okgw-svUTu8eA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
