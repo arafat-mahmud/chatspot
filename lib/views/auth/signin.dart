@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'signup.dart'; // Import the SignUpPage
 import '../../chats&calls_button.dart'; // Correct the path to the actual location of HomePage
+import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 
 class SignInPage extends StatefulWidget {
   @override
@@ -8,9 +9,6 @@ class SignInPage extends StatefulWidget {
 }
 
 class _SignInPageState extends State<SignInPage> {
-  final String _tempEmail = '1';
-  final String _tempPassword = '1';
-
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -135,9 +133,12 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                   backgroundColor: Colors.blue,
                 ),
-                onPressed: () {
-                  if (_emailController.text == _tempEmail &&
-                      _passwordController.text == _tempPassword) {
+                onPressed: () async {
+                  try {
+                    await FirebaseAuth.instance.signInWithEmailAndPassword(
+                      email: _emailController.text,
+                      password: _passwordController.text,
+                    );
                     // Successful login
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Login successful')),
@@ -148,8 +149,8 @@ class _SignInPageState extends State<SignInPage> {
                         builder: (context) => HomePage(),
                       ),
                     );
-                  } else {
-                    // Failed login
+                  } on FirebaseAuthException {
+                    // Handle error (e.g., show a message)
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Invalid email or password')),
                     );

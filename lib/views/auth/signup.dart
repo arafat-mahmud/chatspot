@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'signin.dart'; // Import the SignInPage
+import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 
 class SignUpPage extends StatefulWidget {
   @override
@@ -8,6 +9,10 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _dobController = TextEditingController();
+  final TextEditingController _emailController =
+      TextEditingController(); // Add email controller
+  final TextEditingController _passwordController =
+      TextEditingController(); // Add password controller
   String? _selectedGender; // Variable to store selected gender
 
   @override
@@ -54,6 +59,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
               // Email Field
               TextField(
+                controller: _emailController, // Use the email controller
                 decoration: InputDecoration(
                   labelText: 'Email',
                   border: OutlineInputBorder(
@@ -112,6 +118,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
               // Password Field
               TextField(
+                controller: _passwordController, // Use the password controller
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: 'Password',
@@ -143,14 +150,27 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   backgroundColor: Colors.blue,
                 ),
-                onPressed: () {
-                  // Example usage of _selectedGender
-                  if (_selectedGender != null) {
-                    print('Selected Gender: $_selectedGender');
-                  } else {
-                    print('No gender selected');
+                onPressed: () async {
+                  if (_selectedGender == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Please select a gender')),
+                    );
+                    return; // Prevent sign-up if no gender is selected
                   }
-                  // Handle sign-up logic here
+                  try {
+                    await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                      email: _emailController.text,
+                      password: _passwordController.text,
+                    );
+                    // Navigate to SignInPage after successful sign-up
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => SignInPage()),
+                    );
+                  } on FirebaseAuthException {
+                    // Handle error (e.g., show a message)
+                    print('Error occurred during sign-up');
+                  }
                 },
                 child: Text(
                   'Sign up',
