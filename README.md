@@ -89,10 +89,6 @@ lib/
 
 ---
 
-## **Next Steps**
-1. **Set up Firebase** (Auth, Firestore, Storage, FCM)
-2. **Integrate WebRTC** for real-time communication
-3. **Implement Encryption** for secure messaging
-4. **Create UI & State Management** using Provider/Riverpod/Bloc
-5. **Testing & Deployment**
-
+Important Notes:
+  - flutter pub get
+  - flutter upgrade
