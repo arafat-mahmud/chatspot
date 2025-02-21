@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'views/auth/signin.dart';
+import 'forgot_password.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +30,9 @@ class MyAppState extends State<MyApp> {
       title: 'Chatspot Messenger',
       theme: _themeData,
       home: SignInPage(),
+      routes: {
+        '/forgot-password': (context) => ForgotPasswordScreen(),
+      },
     );
   }
 }
