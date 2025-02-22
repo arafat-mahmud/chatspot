@@ -299,30 +299,10 @@ class _SignUpPageState extends State<SignUpPage> {
 
                     // Send verification email
                     await userCredential.user!.sendEmailVerification();
-
-                    // Show alert dialog for email verification
-                    showDialog(
-                      context: context,
-                      builder: (context) {
-                        return AlertDialog(
-                          title: Text('Verify Your Email'),
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
                           content: Text(
-                              'A verification email has been sent to your email address. Please verify your email before signing in.'),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop(); // Close the dialog
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => SignInPage()),
-                                ); // Redirect to SignInPage
-                              },
-                              child: Text('OK'),
-                            ),
-                          ],
-                        );
-                      },
+                              'Verification email sent. Please check your inbox.')),
                     );
 
                     // Start checking email verification status
