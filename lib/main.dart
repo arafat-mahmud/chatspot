@@ -22,8 +22,7 @@ class MyApp extends StatefulWidget {
 }
 
 class MyAppState extends State<MyApp> {
-  ThemeData _themeData = ThemeData.light(); // Default theme
-
+  ThemeData _themeData = ThemeData.light();
   void setTheme(ThemeData theme) {
     setState(() {
       _themeData = theme;
