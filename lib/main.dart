@@ -34,7 +34,7 @@ class MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Chatspot Messenger',
+      title: 'Chatspot',
       theme: _themeData,
       home: SignInPage(),
       routes: {
