@@ -13,7 +13,29 @@ class _SignUpPageState extends State<SignUpPage> {
       TextEditingController(); // Add email controller
   final TextEditingController _passwordController =
       TextEditingController(); // Add password controller
+  final FocusNode _passwordFocusNode =
+      FocusNode(); // Add FocusNode for password field
   String? _selectedGender; // Variable to store selected gender
+
+  // Add these variables to track password validation status
+  bool _isUpperCaseValid = false;
+  bool _isLowerCaseValid = false;
+  bool _isNumberValid = false;
+  bool _isSpecialCharValid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordFocusNode.addListener(() {
+      setState(() {}); // Update the UI when focus changes
+    });
+  }
+
+  @override
+  void dispose() {
+    _passwordFocusNode.dispose(); // Dispose of the FocusNode
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,17 +139,32 @@ class _SignUpPageState extends State<SignUpPage> {
               SizedBox(height: 16),
 
               // Password Field
-              TextField(
-                controller: _passwordController, // Use the password controller
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.0),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller:
+                        _passwordController, // Use the password controller
+                    obscureText: true,
+                    focusNode: _passwordFocusNode, // Attach FocusNode
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _isPasswordValid(value); // Validate password on change
+                      });
+                    },
                   ),
-                ),
+                  SizedBox(height: 8),
+                  // Show password requirements only if the password field is focused
+                  if (_passwordFocusNode.hasFocus) _buildPasswordRequirements(),
+                ],
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 8),
 
               // Confirm Password Field
               TextField(
@@ -138,6 +175,10 @@ class _SignUpPageState extends State<SignUpPage> {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
+                onTap: () {
+                  // When the Confirm Password field is tapped, unfocus the password field
+                  _passwordFocusNode.unfocus();
+                },
               ),
               SizedBox(height: 16),
 
@@ -157,6 +198,16 @@ class _SignUpPageState extends State<SignUpPage> {
                     );
                     return; // Prevent sign-up if no gender is selected
                   }
+
+                  if (!_isPasswordValid(_passwordController.text)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(
+                              'Password must include uppercase, lowercase, numbers, special characters, and be at least 8 characters long.')),
+                    );
+                    return; // Prevent sign-up if password is invalid
+                  }
+
                   try {
                     await FirebaseAuth.instance.createUserWithEmailAndPassword(
                       email: _emailController.text,
@@ -201,6 +252,58 @@ class _SignUpPageState extends State<SignUpPage> {
           ),
         ),
       ),
+    );
+  }
+
+  // Update the _isPasswordValid method to set the validation status
+  bool _isPasswordValid(String password) {
+    _isUpperCaseValid = RegExp(r'[A-Z]').hasMatch(password);
+    _isLowerCaseValid = RegExp(r'[a-z]').hasMatch(password);
+    _isNumberValid = RegExp(r'[0-9]').hasMatch(password);
+    _isSpecialCharValid = RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password);
+
+    return _isUpperCaseValid &&
+        _isLowerCaseValid &&
+        _isNumberValid &&
+        _isSpecialCharValid &&
+        password.length >= 8;
+  }
+
+  // Add this method to build the password requirements list
+  Widget _buildPasswordRequirements() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Password Requirements:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
+        _buildRequirement(
+            '6 to 32 characters',
+            _passwordController.text.length >= 6 &&
+                _passwordController.text.length <= 32),
+        _buildRequirement('At least one uppercase letter', _isUpperCaseValid),
+        _buildRequirement('At least one lowercase letter', _isLowerCaseValid),
+        _buildRequirement('At least one number', _isNumberValid),
+        _buildRequirement(
+            'At least one special character', _isSpecialCharValid),
+      ],
+    );
+  }
+
+  // Helper method to build individual requirement
+  Widget _buildRequirement(String text, bool isValid) {
+    return Row(
+      children: [
+        Icon(
+          isValid ? Icons.check : Icons.check,
+          color: isValid ? Colors.green : Colors.red,
+        ),
+        SizedBox(width: 8),
+        Text(text,
+            style: TextStyle(color: isValid ? Colors.green : Colors.red)),
+      ],
     );
   }
 }
