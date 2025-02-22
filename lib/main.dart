@@ -4,6 +4,9 @@ import 'views/auth/signin.dart';
 import 'forgot_password.dart';
 import 'firebase_options.dart';
 
+const String base64SignerKey =
+    'yWflScrPyZIFtzEXL1RIEIah7Gq1hUwCgiobw4+TIFQ='; // Replace with 'openssl rand -base64 32' typein terminal
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
