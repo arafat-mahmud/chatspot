@@ -92,3 +92,4 @@ lib/
 Important Notes:
   - flutter pub get
   - flutter upgrade
+  flutter pub upgrade
