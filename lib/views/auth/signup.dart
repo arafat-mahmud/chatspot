@@ -25,6 +25,10 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _isNumberValid = false;
   bool _isSpecialCharValid = false;
 
+  // Add a boolean variable to track password visibility
+  bool _isPasswordVisible = false; // For Password field
+  bool _isConfirmPasswordVisible = false; // For Confirm Password field
+
   @override
   void initState() {
     super.initState();
@@ -147,12 +151,26 @@ class _SignUpPageState extends State<SignUpPage> {
                   TextField(
                     controller:
                         _passwordController, // Use the password controller
-                    obscureText: true,
+                    obscureText: !_isPasswordVisible, // Toggle visibility
                     focusNode: _passwordFocusNode, // Attach FocusNode
                     decoration: InputDecoration(
                       labelText: 'Password',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                              color: Colors.blue,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isPasswordVisible =
+                                !_isPasswordVisible; // Toggle password visibility
+                          });
+                        },
                       ),
                     ),
                     onChanged: (value) {
@@ -172,11 +190,25 @@ class _SignUpPageState extends State<SignUpPage> {
               TextField(
                 controller:
                     _confirmPasswordController, // Use the confirm password controller
-                obscureText: true,
+                obscureText: !_isConfirmPasswordVisible, // Toggle visibility
                 decoration: InputDecoration(
                   labelText: 'Confirm Password',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isConfirmPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                          color: Colors.blue,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isConfirmPasswordVisible =
+                            !_isConfirmPasswordVisible; // Toggle password visibility
+                      });
+                    },
                   ),
                 ),
                 onTap: () {
