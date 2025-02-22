@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'signin.dart'; // Import the SignInPage
-import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
+import 'signin.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async'; // Import Timer
+import 'package:email_validator/email_validator.dart';
 
 class SignUpPage extends StatefulWidget {
   @override
@@ -29,6 +31,12 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _isPasswordVisible = false; // For Password field
   bool _isConfirmPasswordVisible = false; // For Confirm Password field
 
+  // Add a Timer variable
+  Timer? _verificationTimer;
+
+  // Add a boolean variable to track email validity
+  bool _isEmailInvalid = false;
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +47,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   void dispose() {
+    _verificationTimer?.cancel(); // Cancel the timer
     _passwordFocusNode.dispose(); // Dispose of the FocusNode
     super.dispose();
   }
@@ -87,13 +96,22 @@ class _SignUpPageState extends State<SignUpPage> {
 
               // Email Field
               TextField(
-                controller: _emailController, // Use the email controller
+                controller: _emailController,
                 decoration: InputDecoration(
                   labelText: 'Email',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
+                  errorText: _isEmailInvalid
+                      ? 'Invalid email format'
+                      : null, // Real-time feedback
                 ),
+                onChanged: (value) {
+                  setState(() {
+                    _isEmailInvalid = !EmailValidator.validate(
+                        value); // Update email validity
+                  });
+                },
               ),
               SizedBox(height: 16),
 
@@ -163,7 +181,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           _isPasswordVisible
                               ? Icons.visibility
                               : Icons.visibility_off,
-                              color: Colors.blue,
+                          color: Colors.blue,
                         ),
                         onPressed: () {
                           setState(() {
@@ -201,7 +219,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       _isConfirmPasswordVisible
                           ? Icons.visibility
                           : Icons.visibility_off,
-                          color: Colors.blue,
+                      color: Colors.blue,
                     ),
                     onPressed: () {
                       setState(() {
@@ -235,6 +253,14 @@ class _SignUpPageState extends State<SignUpPage> {
                     return; // Prevent sign-up if no gender is selected
                   }
 
+                  // Validate email format
+                  if (!EmailValidator.validate(_emailController.text)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Please enter a valid email')),
+                    );
+                    return; // Prevent sign-up if email is invalid
+                  }
+
                   if (!_isPasswordValid(_passwordController.text)) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -254,18 +280,30 @@ class _SignUpPageState extends State<SignUpPage> {
                   }
 
                   try {
-                    await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                    UserCredential userCredential = await FirebaseAuth.instance
+                        .createUserWithEmailAndPassword(
                       email: _emailController.text,
                       password: _passwordController.text,
                     );
-                    // Navigate to SignInPage after successful sign-up
+
+                    // Send verification email
+                    await userCredential.user!.sendEmailVerification();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(
+                              'Verification email sent. Please check your inbox.')),
+                    );
+
+                    // Inform the user that they need to verify their email
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(builder: (context) => SignInPage()),
                     );
-                  } on FirebaseAuthException {
+                  } on FirebaseAuthException catch (e) {
                     // Handle error (e.g., show a message)
-                    print('Error occurred during sign-up');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.message ?? 'Error occurred')),
+                    );
                   }
                 },
                 child: Text(
@@ -342,7 +380,7 @@ class _SignUpPageState extends State<SignUpPage> {
     return Row(
       children: [
         Icon(
-          isValid ? Icons.check : Icons.check,
+          isValid ? Icons.check : Icons.close,
           color: isValid ? Colors.green : Colors.red,
         ),
         SizedBox(width: 8),
@@ -350,5 +388,23 @@ class _SignUpPageState extends State<SignUpPage> {
             style: TextStyle(color: isValid ? Colors.green : Colors.red)),
       ],
     );
+  }
+
+  // Add this method to start checking email verification status
+  void _startEmailVerificationCheck(User user) {
+    _verificationTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
+      await user.reload();
+      User updatedUser = FirebaseAuth.instance.currentUser!;
+
+      if (updatedUser.emailVerified) {
+        timer.cancel();
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (context) => SignInPage()));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Please verify your email to continue.')),
+        );
+      }
+    });
   }
 }
