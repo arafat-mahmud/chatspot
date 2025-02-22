@@ -9,10 +9,33 @@ class SignInPage extends StatefulWidget {
 }
 
 class _SignInPageState extends State<SignInPage> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  String _errorMessage = '';
 
   bool _obscureText = true; // Add a variable to track password visibility
+
+  void _signIn() async {
+    try {
+      print('Attempting to sign in with email: ${_emailController.text}');
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      if (userCredential.user != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _errorMessage = e.message ?? 'An unknown error occurred';
+      });
+      print('Sign-in error: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -133,29 +156,7 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                   backgroundColor: Colors.blue,
                 ),
-                onPressed: () async {
-                  try {
-                    await FirebaseAuth.instance.signInWithEmailAndPassword(
-                      email: _emailController.text,
-                      password: _passwordController.text,
-                    );
-                    // Successful login
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Login successful')),
-                    );
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => HomePage(),
-                      ),
-                    );
-                  } on FirebaseAuthException {
-                    // Handle error (e.g., show a message)
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Invalid email or password')),
-                    );
-                  }
-                },
+                onPressed: _signIn,
                 child: Text(
                   'Sign in',
                   style: TextStyle(
@@ -305,6 +306,13 @@ class _SignInPageState extends State<SignInPage> {
               ),
 
               SizedBox(height: 16),
+
+              if (_errorMessage.isNotEmpty)
+                Text(
+                  _errorMessage,
+                  style: TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
             ],
           ),
         ),
