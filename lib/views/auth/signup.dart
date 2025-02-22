@@ -102,14 +102,25 @@ class _SignUpPageState extends State<SignUpPage> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
-                  errorText: _isEmailInvalid
+                  errorText: _isEmailInvalid && _emailController.text.isNotEmpty
                       ? 'Invalid email format'
                       : null, // Real-time feedback
                 ),
                 onChanged: (value) {
                   setState(() {
-                    _isEmailInvalid = !EmailValidator.validate(
-                        value); // Update email validity
+                    // Only validate if the input is not empty
+                    if (value.isEmpty) {
+                      _isEmailInvalid = false; // No error for empty input
+                    } else {
+                      _isEmailInvalid = !EmailValidator.validate(
+                          value); // Update email validity
+                    }
+                  });
+                },
+                onEditingComplete: () {
+                  setState(() {
+                    _isEmailInvalid =
+                        false; // Reset error when editing is complete
                   });
                 },
               ),
@@ -288,17 +299,34 @@ class _SignUpPageState extends State<SignUpPage> {
 
                     // Send verification email
                     await userCredential.user!.sendEmailVerification();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
+
+                    // Show alert dialog for email verification
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: Text('Verify Your Email'),
                           content: Text(
-                              'Verification email sent. Please check your inbox.')),
+                              'A verification email has been sent to your email address. Please verify your email before signing in.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop(); // Close the dialog
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => SignInPage()),
+                                ); // Redirect to SignInPage
+                              },
+                              child: Text('OK'),
+                            ),
+                          ],
+                        );
+                      },
                     );
 
-                    // Inform the user that they need to verify their email
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => SignInPage()),
-                    );
+                    // Start checking email verification status
+                    _startEmailVerificationCheck(userCredential.user!);
                   } on FirebaseAuthException catch (e) {
                     // Handle error (e.g., show a message)
                     ScaffoldMessenger.of(context).showSnackBar(
