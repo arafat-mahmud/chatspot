@@ -23,6 +23,16 @@ class _SignInPageState extends State<SignInPage> {
         email: _emailController.text,
         password: _passwordController.text,
       );
+
+      // Check if the email is verified
+      User user = userCredential.user!;
+      if (!user.emailVerified) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Please verify your email to log in.')),
+        );
+        return; // Prevent sign-in if email is not verified
+      }
+
       if (userCredential.user != null) {
         Navigator.pushReplacement(
           context,
