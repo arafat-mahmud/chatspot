@@ -13,6 +13,8 @@ class _SignUpPageState extends State<SignUpPage> {
       TextEditingController(); // Add email controller
   final TextEditingController _passwordController =
       TextEditingController(); // Add password controller
+  final TextEditingController _confirmPasswordController =
+      TextEditingController(); // Add this line
   final FocusNode _passwordFocusNode =
       FocusNode(); // Add FocusNode for password field
   String? _selectedGender; // Variable to store selected gender
@@ -168,6 +170,8 @@ class _SignUpPageState extends State<SignUpPage> {
 
               // Confirm Password Field
               TextField(
+                controller:
+                    _confirmPasswordController, // Use the confirm password controller
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: 'Confirm Password',
@@ -206,6 +210,15 @@ class _SignUpPageState extends State<SignUpPage> {
                               'Password must include uppercase, lowercase, numbers, special characters, and be at least 8 characters long.')),
                     );
                     return; // Prevent sign-up if password is invalid
+                  }
+
+                  // Check if Password and Confirm Password match
+                  if (_passwordController.text !=
+                      _confirmPasswordController.text) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Passwords do not match')),
+                    );
+                    return; // Prevent sign-up if passwords do not match
                   }
 
                   try {
