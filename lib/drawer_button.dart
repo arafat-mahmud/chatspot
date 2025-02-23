@@ -21,7 +21,7 @@ class CustomDrawer extends StatelessWidget {
                 .get(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return DrawerHeader(child: CircularProgressIndicator());
+                return DrawerHeader(child: Container());
               }
               if (snapshot.hasError) {
                 return DrawerHeader(child: Text('Error loading user info'));
@@ -32,16 +32,32 @@ class CustomDrawer extends StatelessWidget {
 
               var userData = snapshot.data!.data() as Map<String, dynamic>;
 
-              return DrawerHeader(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('${userData['name'] ?? 'User'}',
-                        style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.blue,
+              return SizedBox(
+                height: 150, // Adjust height as needed
+                child: DrawerHeader(
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment
+                        .start, // Align everything to the left
+                    children: [
+                      Icon(
+                        Icons.account_circle,
+                        size: 58,
+                        color: Colors.white,
+                      ),
+                      SizedBox(height: 8), // Space between icon and username
+                      Text(
+                        userData['name'] ?? 'User',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
