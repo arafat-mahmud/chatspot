@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'drawer_button.dart'; // Import the CustomDrawer
-import 'views/chat/chat_screen.dart'; // Import the ChatsPage
-import 'views/chat/call_screen.dart'; // Import the CallScreen instead of CallsPage
+import 'views/chat/chat_list.dart'; // Import the ChatsPage
+import 'views/chat/call_screen.dart'; // Import the CallScreen
 
 class HomePage extends StatefulWidget {
   @override
@@ -12,7 +12,7 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
   static final List<Widget> _pages = <Widget>[
-    ChatsPage(),
+    ChatsPage(), // This uses the updated ChatList
     CallScreen(),
   ];
 
