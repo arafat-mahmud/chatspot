@@ -3,6 +3,7 @@ import 'signup.dart'; // Import the SignUpPage
 import '../../chats&calls_button.dart'; // Correct the path to the actual location of HomePage
 import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 
+
 class SignInPage extends StatefulWidget {
   @override
   _SignInPageState createState() => _SignInPageState();
@@ -24,20 +25,20 @@ class _SignInPageState extends State<SignInPage> {
         password: _passwordController.text,
       );
 
-      // Check if the email is verified
-      User user = userCredential.user!;
-      if (!user.emailVerified) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please verify your email to log in.')),
-        );
-        return; // Prevent sign-in if email is not verified
-      }
+      User? user = userCredential.user;
 
-      if (userCredential.user != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage()),
-        );
+      if (user != null && !user.emailVerified) {
+        // Notify user to verify their email
+        print('Please verify your email before logging in.');
+        // Optionally, send verification email
+        await user.sendEmailVerification();
+      } else {
+        if (userCredential.user != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomePage()),
+          );
+        }
       }
     } on FirebaseAuthException catch (e) {
       setState(() {

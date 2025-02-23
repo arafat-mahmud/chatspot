@@ -3,6 +3,7 @@ import 'signin.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async'; // Import Timer
 import 'package:email_validator/email_validator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 
 class SignUpPage extends StatefulWidget {
   @override
@@ -10,6 +11,7 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _emailController =
       TextEditingController(); // Add email controller
@@ -85,6 +87,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
               // Name Field
               TextField(
+                controller: _nameController,
                 decoration: InputDecoration(
                   labelText: 'Name',
                   border: OutlineInputBorder(
@@ -307,10 +310,24 @@ class _SignUpPageState extends State<SignUpPage> {
 
                     // Start checking email verification status
                     _startEmailVerificationCheck(userCredential.user!);
+
+                    // Save user information to Firestore
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(userCredential.user!.uid)
+                        .set({
+                      'name': _nameController.text,
+                      'email': userCredential.user!.email,
+                      'gender': _selectedGender,
+                      'dob': _dobController.text,
+                      'uid': userCredential.user!.uid,
+                    });
                   } on FirebaseAuthException catch (e) {
                     // Handle error (e.g., show a message)
+                    print(
+                        'Error saving user data to Firestore: $e'); // Log the error
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(e.message ?? 'Error occurred')),
+                      SnackBar(content: Text('Failed to save user data: $e')),
                     );
                   }
                 },

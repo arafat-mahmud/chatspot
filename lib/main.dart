@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'views/auth/signin.dart';
 import 'forgot_password.dart';
 import 'firebase_options.dart';
+import 'views/chat/chat_screen.dart';
 
 const String base64SignerKey =
     'yWflScrPyZIFtzEXL1RIEIah7Gq1hUwCgiobw4+TIFQ='; // Replace with 'openssl rand -base64 32' typein terminal
@@ -41,6 +42,7 @@ class MyAppState extends State<MyApp> {
       home: SignInPage(),
       routes: {
         '/forgot-password': (context) => ForgotPasswordScreen(),
+        '/chat-screen': (context) => ChatScreen(),
       },
     );
   }
