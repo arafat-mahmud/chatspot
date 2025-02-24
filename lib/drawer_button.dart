@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'views/settings/settings.dart'; // Updated path
-import 'views/settings/profile.dart'; // Updated path
-import 'main.dart'; // Import MyApp to access MyAppState
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'views/settings/settings.dart';
+import 'views/settings/profile.dart';
+import 'main.dart';
 
 class CustomDrawer extends StatelessWidget {
   @override
@@ -31,42 +32,60 @@ class CustomDrawer extends StatelessWidget {
               }
 
               var userData = snapshot.data!.data() as Map<String, dynamic>;
+              String username = userData['username'] ?? 'No Username';
 
-              return SizedBox(
-                height: 150, // Adjust height as needed
-                child: DrawerHeader(
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment
-                        .start, // Align everything to the left
-                    children: [
-                      Icon(
-                        Icons.account_circle,
-                        size: 58,
+              return Container(
+                padding: EdgeInsets.all(16), // Adds padding to avoid overflow
+                color: Colors.blue,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min, // Adapts height dynamically
+                  children: [
+                    Icon(
+                      Icons.account_circle,
+                      size: 58,
+                      color: Colors.white,
+                    ),
+                    SizedBox(height: 8), // Space between icon and name
+                    Text(
+                      userData['name'] ?? 'User',
+                      style: TextStyle(
                         color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
                       ),
-                      SizedBox(height: 8), // Space between icon and username
-                      Text(
-                        userData['name'] ?? 'User',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                    ),
+                    SizedBox(height: 4), // Space between name and username
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 4, // Space between username and copy icon
+                      children: [
+                        Text(
+                          username,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 4), // Space between name and username
-                      Text(
-                        userData['username'] ??
-                            'No Username', // Display username
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
+                        GestureDetector(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: username));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Username copied!'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: Icon(
+                            Icons.copy,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ),
               );
             },
