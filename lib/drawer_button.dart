@@ -55,7 +55,7 @@ class CustomDrawer extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: 4), // Space between name and username
+                    SizedBox(height: 8), // Space between name and username
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: 4, // Space between username and copy icon
