@@ -56,6 +56,15 @@ class CustomDrawer extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      SizedBox(height: 4), // Space between name and username
+                      Text(
+                        userData['username'] ??
+                            'No Username', // Display username
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                        ),
+                      ),
                     ],
                   ),
                 ),

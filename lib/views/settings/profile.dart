@@ -9,12 +9,13 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   late TextEditingController _nameController;
-  final TextEditingController _usernameController =
-      TextEditingController(text: 'arafat123');
+  final TextEditingController _usernameController = TextEditingController();
 
   // Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isLoading = true;
+  String _originalUsername = ''; // Store the original username for comparison
+
   @override
   void initState() {
     super.initState();
@@ -27,24 +28,23 @@ class _ProfilePageState extends State<ProfilePage> {
       DocumentSnapshot userDoc =
           await _firestore.collection('users').doc(user.uid).get();
       if (userDoc.exists) {
-        _nameController = TextEditingController(
-            text: userDoc['name']);
+        _nameController = TextEditingController(text: userDoc['name']);
+        _usernameController.text = userDoc['username'] ?? '';
+        _originalUsername = userDoc['username'] ?? ''; // Store the original username
       } else {
-        _nameController =
-            TextEditingController(text: '');
+        _nameController = TextEditingController(text: '');
+        _usernameController.text = '';
       }
       setState(() {
         _isLoading = false;
       });
-    } else {
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Center(
-          child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator());
     }
     return Scaffold(
       appBar: AppBar(
@@ -55,8 +55,7 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           children: [
             TextField(
-              controller:
-                  _nameController,
+              controller: _nameController,
               decoration: InputDecoration(
                 labelText: 'Name',
                 border: OutlineInputBorder(),
@@ -73,24 +72,69 @@ class _ProfilePageState extends State<ProfilePage> {
             SizedBox(height: 16),
             ElevatedButton(
               onPressed: () async {
+                // Trim and lowercase the username
+                String username = _usernameController.text.trim().toLowerCase();
+
+                // Check if the username has been modified
+                bool isUsernameModified = username != _originalUsername;
+
+                // Validate username only if it has been modified
+                if (isUsernameModified) {
+                  if (!RegExp(r'^[a-z0-9_]{5,}$').hasMatch(username)) {
+                    // Show error message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            'Username must be at least 5 characters long and can contain lowercase letters, numbers, and underscores.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return; // Exit the function if validation fails
+                  }
+
+                  // Check if username is available
+                  final usernameExists = await _checkUsernameAvailability(username);
+                  if (usernameExists) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Username is already taken.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return; // Exit the function if username is taken
+                  }
+                }
+
                 // Save the changes
                 print('Name: ${_nameController.text}');
-                print('Username: ${_usernameController.text}');
+                print('Username: $username');
 
-                // Update Firestore user name
-                final user =
-                    FirebaseAuth.instance.currentUser;
+                // Update Firestore user data
+                final user = FirebaseAuth.instance.currentUser;
                 if (user != null) {
-                  await _firestore
-                      .collection('users')
-                      .doc(user.uid)
-                      .update({
-                    'name': _nameController.text,
-                  }).then((_) {
-                    print("User name updated successfully!");
-                  }).catchError((error) {
-                    print("Failed to update user name: $error");
-                  });
+                  try {
+                    await _firestore.collection('users').doc(user.uid).update({
+                      'name': _nameController.text,
+                      'username': username,
+                    });
+                    print("User data updated successfully!");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Profile updated successfully!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                    // Update the original username after successful save
+                    _originalUsername = username;
+                  } catch (error) {
+                    print("Failed to update user data: $error");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to update profile.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               },
               child: Text('Save Changes'),
@@ -99,5 +143,18 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
     );
+  }
+
+  Future<bool> _checkUsernameAvailability(String username) async {
+    try {
+      final userDocs = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username)
+          .get();
+      return userDocs.docs.isNotEmpty;
+    } catch (e) {
+      print("Error checking username availability: $e");
+      return false;
+    }
   }
 }
