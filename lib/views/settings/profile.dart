@@ -8,39 +8,35 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  late TextEditingController _nameController; // Mark as late
-  final TextEditingController _contactController =
-      TextEditingController(text: '+1234567890');
+  late TextEditingController _nameController;
+  final TextEditingController _usernameController =
+      TextEditingController(text: 'arafat123');
 
   // Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  bool _isLoading = true; // Track loading state
-
+  bool _isLoading = true;
   @override
   void initState() {
     super.initState();
-    _fetchUserData(); // Fetch user data on initialization
+    _fetchUserData();
   }
 
   void _fetchUserData() async {
-    final user = FirebaseAuth.instance.currentUser; // Get the current user
+    final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      // Replace 'user_id_here' with the actual user ID
       DocumentSnapshot userDoc =
           await _firestore.collection('users').doc(user.uid).get();
       if (userDoc.exists) {
         _nameController = TextEditingController(
-            text: userDoc['name']); // Initialize with Firestore data
+            text: userDoc['name']);
       } else {
         _nameController =
-            TextEditingController(text: ''); // Default value if user not found
+            TextEditingController(text: '');
       }
       setState(() {
-        _isLoading = false; // Update loading state
+        _isLoading = false;
       });
     } else {
-      // Handle the case where the user is not authenticated
-      // You might want to redirect to a login page
     }
   }
 
@@ -48,9 +44,8 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Center(
-          child: CircularProgressIndicator()); // Show loading indicator
+          child: CircularProgressIndicator());
     }
-
     return Scaffold(
       appBar: AppBar(
         title: Text('My Profile'),
@@ -61,7 +56,7 @@ class _ProfilePageState extends State<ProfilePage> {
           children: [
             TextField(
               controller:
-                  _nameController, // Use the dynamically initialized controller
+                  _nameController,
               decoration: InputDecoration(
                 labelText: 'Name',
                 border: OutlineInputBorder(),
@@ -69,9 +64,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             SizedBox(height: 16),
             TextField(
-              controller: _contactController,
+              controller: _usernameController,
               decoration: InputDecoration(
-                labelText: 'Contact Number',
+                labelText: 'Username',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -80,15 +75,15 @@ class _ProfilePageState extends State<ProfilePage> {
               onPressed: () async {
                 // Save the changes
                 print('Name: ${_nameController.text}');
-                print('Contact: ${_contactController.text}');
+                print('Username: ${_usernameController.text}');
 
                 // Update Firestore user name
                 final user =
-                    FirebaseAuth.instance.currentUser; // Get the current user
+                    FirebaseAuth.instance.currentUser;
                 if (user != null) {
                   await _firestore
                       .collection('users')
-                      .doc(user.uid) // Use the authenticated user's ID
+                      .doc(user.uid)
                       .update({
                     'name': _nameController.text,
                   }).then((_) {
