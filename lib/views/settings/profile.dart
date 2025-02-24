@@ -29,8 +29,9 @@ class _ProfilePageState extends State<ProfilePage> {
           await _firestore.collection('users').doc(user.uid).get();
       if (userDoc.exists) {
         _nameController = TextEditingController(text: userDoc['name']);
-        _usernameController.text = userDoc['username'] ?? '';
-        _originalUsername = userDoc['username'] ?? ''; // Store the original username
+        String savedUsername = userDoc['username'] ?? '';
+        _originalUsername = savedUsername; // Store the original username with '@'
+        _usernameController.text = savedUsername.replaceFirst('@', ''); // Remove '@' for display
       } else {
         _nameController = TextEditingController(text: '');
         _usernameController.text = '';
@@ -75,8 +76,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 // Trim and lowercase the username
                 String username = _usernameController.text.trim().toLowerCase();
 
+                // Add '@' to the username for saving in the database
+                String usernameWithAt = '@$username';
+
                 // Check if the username has been modified
-                bool isUsernameModified = username != _originalUsername;
+                bool isUsernameModified = usernameWithAt != _originalUsername;
 
                 // Validate username only if it has been modified
                 if (isUsernameModified) {
@@ -93,7 +97,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   }
 
                   // Check if username is available
-                  final usernameExists = await _checkUsernameAvailability(username);
+                  final usernameExists = await _checkUsernameAvailability(usernameWithAt);
                   if (usernameExists) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -107,7 +111,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 // Save the changes
                 print('Name: ${_nameController.text}');
-                print('Username: $username');
+                print('Username: $usernameWithAt');
 
                 // Update Firestore user data
                 final user = FirebaseAuth.instance.currentUser;
@@ -115,7 +119,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   try {
                     await _firestore.collection('users').doc(user.uid).update({
                       'name': _nameController.text,
-                      'username': username,
+                      'username': usernameWithAt,
                     });
                     print("User data updated successfully!");
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -125,7 +129,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     );
                     // Update the original username after successful save
-                    _originalUsername = username;
+                    _originalUsername = usernameWithAt;
                   } catch (error) {
                     print("Failed to update user data: $error");
                     ScaffoldMessenger.of(context).showSnackBar(
