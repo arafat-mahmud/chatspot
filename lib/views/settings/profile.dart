@@ -19,23 +19,32 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    _nameController = TextEditingController(); // Initialize the controller
     _fetchUserData();
   }
 
   void _fetchUserData() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(user.uid).get();
-      if (userDoc.exists) {
-        _nameController = TextEditingController(text: userDoc['name']);
-        String savedUsername = userDoc['username'] ?? '';
-        _originalUsername = savedUsername; // Store the original username with '@'
-        _usernameController.text = savedUsername.replaceFirst('@', ''); // Remove '@' for display
-      } else {
-        _nameController = TextEditingController(text: '');
-        _usernameController.text = '';
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          // Handle missing fields gracefully
+          _nameController.text = userDoc['name'] ?? ''; // Default to empty string if 'name' is missing
+          String savedUsername = userDoc['username'] ?? ''; // Default to empty string if 'username' is missing
+          _originalUsername = savedUsername; // Store the original username with '@'
+          _usernameController.text = savedUsername.replaceFirst('@', ''); // Remove '@' for display
+        } else {
+          // If the document doesn't exist, initialize with empty values
+          _nameController.text = '';
+          _usernameController.text = '';
+        }
+        setState(() {
+          _isLoading = false;
+        });
       }
+    } catch (e) {
+      print("Error fetching user data: $e");
       setState(() {
         _isLoading = false;
       });
@@ -110,17 +119,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 }
 
                 // Save the changes
-                print('Name: ${_nameController.text}');
-                print('Username: $usernameWithAt');
-
-                // Update Firestore user data
                 final user = FirebaseAuth.instance.currentUser;
                 if (user != null) {
                   try {
-                    await _firestore.collection('users').doc(user.uid).update({
+                    await _firestore.collection('users').doc(user.uid).set({
                       'name': _nameController.text,
                       'username': usernameWithAt,
-                    });
+                    }, SetOptions(merge: true)); // Merge to avoid overwriting other fields
                     print("User data updated successfully!");
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'views/settings/settings.dart';
 import 'views/settings/profile.dart';
-import 'main.dart';
+import 'views/settings/settings.dart';
+import '../main.dart'; // Correct path to MyAppState
 
 class CustomDrawer extends StatelessWidget {
   @override
@@ -22,7 +22,7 @@ class CustomDrawer extends StatelessWidget {
                 .get(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return DrawerHeader(child: Container());
+                return DrawerHeader(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
                 return DrawerHeader(child: Text('Error loading user info'));
@@ -32,7 +32,8 @@ class CustomDrawer extends StatelessWidget {
               }
 
               var userData = snapshot.data!.data() as Map<String, dynamic>;
-              String username = userData['username'] ?? 'No Username';
+              String username = userData['username'] ??
+                  'No Username'; // Handle missing username
 
               return Container(
                 padding: EdgeInsets.all(16), // Adds padding to avoid overflow
@@ -48,7 +49,7 @@ class CustomDrawer extends StatelessWidget {
                     ),
                     SizedBox(height: 8), // Space between icon and name
                     Text(
-                      userData['name'] ?? 'User',
+                      userData['name'] ?? 'User', // Handle missing name
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -104,14 +105,13 @@ class CustomDrawer extends StatelessWidget {
             leading: Icon(Icons.settings),
             title: Text('Settings'),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (context) {
                   final myAppState =
                       context.findAncestorStateOfType<MyAppState>();
                   return SettingsPage(setTheme: myAppState!.setTheme);
-                }),
-              );
+                },
+              ));
             },
           ),
           ListTile(
