@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'views/settings/profile.dart';
 import 'views/settings/settings.dart';
 import '../main.dart'; // Correct path to MyAppState
+import 'views/auth/signin.dart'; // Implied import for SignInPage
 
 class CustomDrawer extends StatelessWidget {
   @override
@@ -119,7 +120,10 @@ class CustomDrawer extends StatelessWidget {
             title: Text('Logout'),
             onTap: () async {
               await FirebaseAuth.instance.signOut();
-              Navigator.pop(context);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => SignInPage()),
+              );
             },
           ),
         ],
