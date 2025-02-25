@@ -13,14 +13,10 @@ class SignUpPage extends StatefulWidget {
 class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
-  final TextEditingController _emailController =
-      TextEditingController(); // Add email controller
-  final TextEditingController _passwordController =
-      TextEditingController(); // Add password controller
-  final TextEditingController _confirmPasswordController =
-      TextEditingController(); // Add this line
-  final FocusNode _passwordFocusNode =
-      FocusNode(); // Add FocusNode for password field
+  final TextEditingController _emailController = TextEditingController(); // Add email controller
+  final TextEditingController _passwordController = TextEditingController(); // Add password controller
+  final TextEditingController _confirmPasswordController = TextEditingController(); // Add this line
+  final FocusNode _passwordFocusNode = FocusNode(); // Add FocusNode for password field
   String? _selectedGender; // Variable to store selected gender
 
   // Add these variables to track password validation status
@@ -115,15 +111,13 @@ class _SignUpPageState extends State<SignUpPage> {
                     if (value.isEmpty) {
                       _isEmailInvalid = false; // No error for empty input
                     } else {
-                      _isEmailInvalid = !EmailValidator.validate(
-                          value); // Update email validity
+                      _isEmailInvalid = !EmailValidator.validate(value); // Update email validity
                     }
                   });
                 },
                 onEditingComplete: () {
                   setState(() {
-                    _isEmailInvalid =
-                        false; // Reset error when editing is complete
+                    _isEmailInvalid = false; // Reset error when editing is complete
                   });
                 },
               ),
@@ -147,8 +141,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     lastDate: DateTime.now(),
                   );
                   if (pickedDate != null) {
-                    _dobController.text =
-                        "${pickedDate.toLocal()}".split(' ')[0];
+                    _dobController.text = "${pickedDate.toLocal()}".split(' ')[0];
                   }
                 },
               ),
@@ -181,8 +174,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
-                    controller:
-                        _passwordController, // Use the password controller
+                    controller: _passwordController, // Use the password controller
                     obscureText: !_isPasswordVisible, // Toggle visibility
                     focusNode: _passwordFocusNode, // Attach FocusNode
                     decoration: InputDecoration(
@@ -192,15 +184,12 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _isPasswordVisible
-                              ? Icons.visibility
-                              : Icons.visibility_off,
+                          _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
                           color: Colors.blue,
                         ),
                         onPressed: () {
                           setState(() {
-                            _isPasswordVisible =
-                                !_isPasswordVisible; // Toggle password visibility
+                            _isPasswordVisible = !_isPasswordVisible; // Toggle password visibility
                           });
                         },
                       ),
@@ -220,8 +209,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
               // Confirm Password Field
               TextField(
-                controller:
-                    _confirmPasswordController, // Use the confirm password controller
+                controller: _confirmPasswordController, // Use the confirm password controller
                 obscureText: !_isConfirmPasswordVisible, // Toggle visibility
                 decoration: InputDecoration(
                   labelText: 'Confirm Password',
@@ -230,15 +218,12 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isConfirmPasswordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
+                      _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
                       color: Colors.blue,
                     ),
                     onPressed: () {
                       setState(() {
-                        _isConfirmPasswordVisible =
-                            !_isConfirmPasswordVisible; // Toggle password visibility
+                        _isConfirmPasswordVisible = !_isConfirmPasswordVisible; // Toggle password visibility
                       });
                     },
                   ),
@@ -260,6 +245,28 @@ class _SignUpPageState extends State<SignUpPage> {
                   backgroundColor: Colors.blue,
                 ),
                 onPressed: () async {
+                  // Validate required fields
+                  if (_nameController.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Please enter your name')),
+                    );
+                    return; // Prevent sign-up if name is empty
+                  }
+
+                  if (_emailController.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Please enter your email')),
+                    );
+                    return; // Prevent sign-up if email is empty
+                  }
+
+                  if (_dobController.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Please enter your date of birth')),
+                    );
+                    return; // Prevent sign-up if date of birth is empty
+                  }
+
                   if (_selectedGender == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Please select a gender')),
@@ -279,14 +286,13 @@ class _SignUpPageState extends State<SignUpPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                           content: Text(
-                              'Password must include uppercase, lowercase, numbers, special characters, and be at least 8 characters long.')),
+                              'Password must include uppercase, lowercase, numbers, special characters, and be at least 6 characters long.')),
                     );
                     return; // Prevent sign-up if password is invalid
                   }
 
                   // Check if Password and Confirm Password match
-                  if (_passwordController.text !=
-                      _confirmPasswordController.text) {
+                  if (_passwordController.text != _confirmPasswordController.text) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Passwords do not match')),
                     );
@@ -305,7 +311,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                           content: Text(
-                              'Verification email sent. Please check your inbox.')),
+                              'Please verify your email within 5 minutes to continue.')),
                     );
 
                     // Start checking email verification status
@@ -324,8 +330,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     });
                   } on FirebaseAuthException catch (e) {
                     // Handle error (e.g., show a message)
-                    print(
-                        'Error saving user data to Firestore: $e'); // Log the error
+                    print('Error saving user data to Firestore: $e'); // Log the error
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Failed to save user data: $e')),
                     );
@@ -374,7 +379,7 @@ class _SignUpPageState extends State<SignUpPage> {
         _isLowerCaseValid &&
         _isNumberValid &&
         _isSpecialCharValid &&
-        password.length >= 8;
+        password.length >= 6;
   }
 
   // Add this method to build the password requirements list
@@ -394,8 +399,7 @@ class _SignUpPageState extends State<SignUpPage> {
         _buildRequirement('At least one uppercase letter', _isUpperCaseValid),
         _buildRequirement('At least one lowercase letter', _isLowerCaseValid),
         _buildRequirement('At least one number', _isNumberValid),
-        _buildRequirement(
-            'At least one special character', _isSpecialCharValid),
+        _buildRequirement('At least one special character', _isSpecialCharValid),
       ],
     );
   }
@@ -409,15 +413,14 @@ class _SignUpPageState extends State<SignUpPage> {
           color: isValid ? Colors.green : Colors.red,
         ),
         SizedBox(width: 8),
-        Text(text,
-            style: TextStyle(color: isValid ? Colors.green : Colors.red)),
+        Text(text, style: TextStyle(color: isValid ? Colors.green : Colors.red)),
       ],
     );
   }
 
   // Add this method to start checking email verification status
   void _startEmailVerificationCheck(User user) {
-    _verificationTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
+    _verificationTimer = Timer.periodic(Duration(seconds: 300), (timer) async {
       await user.reload();
       User updatedUser = FirebaseAuth.instance.currentUser!;
 
@@ -427,7 +430,7 @@ class _SignUpPageState extends State<SignUpPage> {
             context, MaterialPageRoute(builder: (context) => SignInPage()));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please verify your email to continue.')),
+          SnackBar(content: Text('Please verify your email within 5 minutes to continue.')),
         );
       }
     });
