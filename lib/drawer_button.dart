@@ -23,7 +23,7 @@ class CustomDrawer extends StatelessWidget {
                 .get(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return DrawerHeader(child: CircularProgressIndicator());
+                return DrawerHeader(child: Container());
               }
               if (snapshot.hasError) {
                 return DrawerHeader(child: Text('Error loading user info'));
