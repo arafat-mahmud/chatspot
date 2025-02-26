@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'drawer_button.dart'; // Import the CustomDrawer
 import 'views/chat/chat_list.dart'; // Import the ChatsPage
 import 'views/chat/call_screen.dart'; // Import the CallScreen
+import 'views/search_bar/search_page.dart'; // Import the SearchPage
 
 class HomePage extends StatefulWidget {
   @override
@@ -18,7 +19,7 @@ class _HomePageState extends State<HomePage> {
 
   static const List<String> _titles = <String>[
     'Chatspot',
-    'Calls',
+    'Chatspot',
   ];
 
   void _onItemTapped(int index) {
@@ -30,15 +31,44 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _titles[_selectedIndex],
-          style: TextStyle(
-            fontWeight: FontWeight.bold, // Make the title bold
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(56.0),
+        child: AppBar(
+          backgroundColor: Color.fromARGB(255, 50, 157, 244),
+          title: SizedBox(
+            width: double.infinity,
+            child: Text(
+              _titles[_selectedIndex],
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.start,
+            ),
+          ),
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(Icons.search), // Search icon
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          SearchPage()), // Navigate to SearchPage
+                );
+              },
+            ),
+          ],
+          bottom: PreferredSize(
+            preferredSize: Size.fromHeight(1.0),
+            child: Divider(
+              height: 1.0,
+              thickness: 1.0,
+              color: Colors.grey[300],
+            ),
           ),
         ),
       ),
-      drawer: CustomDrawer(), // Use the CustomDrawer widget
+      drawer: CustomDrawer(),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
@@ -53,7 +83,7 @@ class _HomePageState extends State<HomePage> {
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: const Color.fromARGB(255, 21, 138, 234),
-        unselectedItemColor: Colors.grey, // Set unselected item color
+        unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed, // Ensure fixed type
       ),
