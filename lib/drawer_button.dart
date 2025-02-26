@@ -4,8 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'views/settings/profile.dart';
 import 'views/settings/settings.dart';
-import '../main.dart'; // Correct path to MyAppState
-import 'views/auth/signin.dart'; // Implied import for SignInPage
+import '../main.dart';
+import 'views/auth/signin.dart';
 
 class CustomDrawer extends StatelessWidget {
   @override
@@ -37,30 +37,30 @@ class CustomDrawer extends StatelessWidget {
                   'No Username'; // Handle missing username
 
               return Container(
-                padding: EdgeInsets.all(16), // Adds padding to avoid overflow
+                padding: EdgeInsets.all(16),
                 color: Colors.blue,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min, // Adapts height dynamically
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.account_circle,
                       size: 58,
                       color: Colors.white,
                     ),
-                    SizedBox(height: 8), // Space between icon and name
+                    SizedBox(height: 8),
                     Text(
-                      userData['name'] ?? 'User', // Handle missing name
+                      userData['name'] ?? 'User',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: 8), // Space between name and username
+                    SizedBox(height: 8),
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 4, // Space between username and copy icon
+                      spacing: 4,
                       children: [
                         Text(
                           username,
