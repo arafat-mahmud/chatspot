@@ -11,23 +11,26 @@ class _ProfilePageState extends State<ProfilePage> {
   late TextEditingController _nameController;
   final TextEditingController _usernameController = TextEditingController();
 
-  // Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isLoading = true;
   String _originalUsername = '';
+  String _usernameAvailabilityMessage = '';
+  bool _isUsernameAvailable = false;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
     _fetchUserData();
+    _testUsernameCheck(); // Call the test function here
   }
 
   void _fetchUserData() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+        DocumentSnapshot userDoc =
+            await _firestore.collection('users').doc(user.uid).get();
         if (userDoc.exists) {
           _nameController.text = userDoc['name'] ?? '';
           String savedUsername = userDoc['username'] ?? '';
@@ -76,44 +79,77 @@ class _ProfilePageState extends State<ProfilePage> {
                 labelText: 'Username',
                 border: OutlineInputBorder(),
               ),
+              onChanged: (value) async {
+                String username = value.trim().toLowerCase();
+                String usernameWithAt = '@$username';
+                if (username.isNotEmpty) {
+                  if (!RegExp(r'^[a-z0-9_]{5,}$').hasMatch(username)) {
+                    setState(() {
+                      _usernameAvailabilityMessage =
+                          'Username must be at least 5 characters long and can contain lowercase letters, numbers, and underscores.';
+                      _isUsernameAvailable = false;
+                    });
+                  } else {
+                    final usernameExists =
+                        await _checkUsernameAvailability(usernameWithAt);
+                    setState(() {
+                      _usernameAvailabilityMessage = usernameExists
+                          ? 'Username is already taken.'
+                          : 'Username is available.';
+                      _isUsernameAvailable = !usernameExists;
+                      print(
+                          'Username availability: $_isUsernameAvailable, Username: $usernameWithAt');
+                    });
+                  }
+                } else {
+                  setState(() {
+                    _usernameAvailabilityMessage = '';
+                    _isUsernameAvailable = false;
+                  });
+                }
+              },
+            ),
+            SizedBox(height: 8),
+            Text(
+              _usernameAvailabilityMessage,
+              style: TextStyle(
+                color: _usernameAvailabilityMessage.contains('available')
+                    ? Colors.green
+                    : Colors.red,
+              ),
             ),
             SizedBox(height: 16),
             ElevatedButton(
               onPressed: () async {
-                String username = _usernameController.text.trim().toLowerCase();
-                String usernameWithAt = '@$username';
-                bool isUsernameModified = usernameWithAt != _originalUsername;
-                if (isUsernameModified) {
-                  if (!RegExp(r'^[a-z0-9_]{5,}$').hasMatch(username)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            'Username must be at least 5 characters long and can contain lowercase letters, numbers, and underscores.'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-                  final usernameExists = await _checkUsernameAvailability(usernameWithAt);
-                  if (usernameExists) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Username is already taken.'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-                }
-
-                // Save the changes
                 final user = FirebaseAuth.instance.currentUser;
                 if (user != null) {
                   try {
+                    // Always allow name to be updated
+                    String name = _nameController.text.trim();
+
+                    // Check if username is modified and available
+                    String username = _usernameController.text.trim().toLowerCase();
+                    String usernameWithAt = '@$username';
+                    bool isUsernameModified = usernameWithAt != _originalUsername;
+
+                    if (isUsernameModified) {
+                      if (!_isUsernameAvailable) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Username is not available.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+                    }
+
+                    // Update user data
                     await _firestore.collection('users').doc(user.uid).set({
-                      'name': _nameController.text,
-                      'username': usernameWithAt,
+                      'name': name,
+                      'username': isUsernameModified ? usernameWithAt : _originalUsername,
                     }, SetOptions(merge: true));
+
                     print("User data updated successfully!");
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -121,8 +157,13 @@ class _ProfilePageState extends State<ProfilePage> {
                         backgroundColor: Colors.green,
                       ),
                     );
-                    // Update the original username after successful save
-                    _originalUsername = usernameWithAt;
+
+                    // Update original username if it was changed
+                    if (isUsernameModified) {
+                      setState(() {
+                        _originalUsername = usernameWithAt;
+                      });
+                    }
                   } catch (error) {
                     print("Failed to update user data: $error");
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -153,5 +194,13 @@ class _ProfilePageState extends State<ProfilePage> {
       print("Error checking username availability: $e");
       return false;
     }
+  }
+
+  void _testUsernameCheck() async {
+    // Use your real username for testing
+    bool taken = await _checkUsernameAvailability('@testusername');
+    print('Test username check: @testusername is taken: $taken');
+    bool available = await _checkUsernameAvailability('@testusernamenotTaken');
+    print('Test username check: @testusernamenotTaken is taken: $available');
   }
 }
