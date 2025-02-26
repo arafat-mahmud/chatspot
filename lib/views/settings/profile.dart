@@ -14,12 +14,12 @@ class _ProfilePageState extends State<ProfilePage> {
   // Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isLoading = true;
-  String _originalUsername = ''; // Store the original username for comparison
+  String _originalUsername = '';
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(); // Initialize the controller
+    _nameController = TextEditingController();
     _fetchUserData();
   }
 
@@ -29,13 +29,11 @@ class _ProfilePageState extends State<ProfilePage> {
       if (user != null) {
         DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
         if (userDoc.exists) {
-          // Handle missing fields gracefully
-          _nameController.text = userDoc['name'] ?? ''; // Default to empty string if 'name' is missing
-          String savedUsername = userDoc['username'] ?? ''; // Default to empty string if 'username' is missing
-          _originalUsername = savedUsername; // Store the original username with '@'
-          _usernameController.text = savedUsername.replaceFirst('@', ''); // Remove '@' for display
+          _nameController.text = userDoc['name'] ?? '';
+          String savedUsername = userDoc['username'] ?? '';
+          _originalUsername = savedUsername;
+          _usernameController.text = savedUsername.replaceFirst('@', '');
         } else {
-          // If the document doesn't exist, initialize with empty values
           _nameController.text = '';
           _usernameController.text = '';
         }
@@ -82,19 +80,11 @@ class _ProfilePageState extends State<ProfilePage> {
             SizedBox(height: 16),
             ElevatedButton(
               onPressed: () async {
-                // Trim and lowercase the username
                 String username = _usernameController.text.trim().toLowerCase();
-
-                // Add '@' to the username for saving in the database
                 String usernameWithAt = '@$username';
-
-                // Check if the username has been modified
                 bool isUsernameModified = usernameWithAt != _originalUsername;
-
-                // Validate username only if it has been modified
                 if (isUsernameModified) {
                   if (!RegExp(r'^[a-z0-9_]{5,}$').hasMatch(username)) {
-                    // Show error message
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
@@ -102,10 +92,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         backgroundColor: Colors.red,
                       ),
                     );
-                    return; // Exit the function if validation fails
+                    return;
                   }
-
-                  // Check if username is available
                   final usernameExists = await _checkUsernameAvailability(usernameWithAt);
                   if (usernameExists) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -114,7 +102,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         backgroundColor: Colors.red,
                       ),
                     );
-                    return; // Exit the function if username is taken
+                    return;
                   }
                 }
 
@@ -125,7 +113,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     await _firestore.collection('users').doc(user.uid).set({
                       'name': _nameController.text,
                       'username': usernameWithAt,
-                    }, SetOptions(merge: true)); // Merge to avoid overwriting other fields
+                    }, SetOptions(merge: true));
                     print("User data updated successfully!");
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
