@@ -6,7 +6,7 @@ class ForgotPasswordScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String email = ''; // Variable to hold the email input
+    String email = '';
 
     return Scaffold(
       appBar: AppBar(title: Text('Forgot Password')),
