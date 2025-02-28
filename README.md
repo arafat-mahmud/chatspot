@@ -1,15 +1,7 @@
 # chatspot
+----------
 
-A new Flutter project.
-
-## Getting Started
-
-That sounds like an exciting project! Here's a structured approach to your Flutter app, including the folder structure and key features.
-
----
-
-## **Folder Structure for Your Flutter App**
-```
+Folder Structure for Your Flutter App
 lib/
 │── main.dart
 │
@@ -60,29 +52,29 @@ lib/
 
 ---
 
-## **Key Features**
-1. **Authentication**
+## Key Features
+1. Authentication
    - Sign in / Sign up (Firebase Auth)
    - Google & Email Authentication
    - Forgot Password
 
-2. **Chat & Encryption**
+2. Chat & Encryption
    - One-to-One Messaging
    - End-to-End Encryption (AES & RSA)
    - Message Timestamp & Delivery Status
 
-3. **Voice & Video Calls (WebRTC)**
+3. Voice & Video Calls (WebRTC)
    - Real-time Audio & Video Calling
    - Call Notifications (Firebase Cloud Messaging)
    - Peer-to-Peer Connection
 
-4. **Chat Features**
+4. Chat Features
    - Typing Indicator
    - Read Receipts
    - Message Deletion
    - Media Sharing (Images, Videos, Files)
 
-5. **Settings & Profile**
+5. Settings & Profile
    - Change Profile Picture
    - Block/Unblock Users
    - Privacy & Security Settings
