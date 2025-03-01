@@ -21,7 +21,7 @@ lib/
 │   ├── webrtc_service.dart
 │   ├── encryption_service.dart
 │
-├── views/                # UI Screens
+├── views/
 │   ├── auth/
 │   │   ├── sign_in.dart
 │   │   ├── sign_up.dart
