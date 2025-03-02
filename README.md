@@ -1,7 +1,7 @@
 # chatspot
 ----------
 
-Folder Structure for Your Flutter App
+Folder Structure
 lib/
 │── main.dart
 │
