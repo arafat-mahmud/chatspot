@@ -43,11 +43,6 @@ lib/
 │   ├── custom_button.dart
 │   ├── text_field.dart
 │
-├── providers/            # State management (Provider, Riverpod, Bloc)
-│   ├── auth_provider.dart
-│   ├── chat_provider.dart
-│   ├── call_provider.dart
-│
 ```
 
 ---
