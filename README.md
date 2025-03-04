@@ -38,11 +38,6 @@ lib/
 │   │
 │   ├── home_screen.dart  # Main UI after authentication
 │
-├── widgets/              # Reusable widgets
-│   ├── chat_bubble.dart
-│   ├── custom_button.dart
-│   ├── text_field.dart
-│
 ```
 
 ---
