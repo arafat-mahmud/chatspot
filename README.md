@@ -45,7 +45,7 @@ lib/
 ## Key Features
 1. Authentication
    - Sign in / Sign up (Firebase Auth)
-   - Google & Email Authentication
+   // - Google & Email Authentication
    - Forgot Password
 
 2. Chat & Encryption
