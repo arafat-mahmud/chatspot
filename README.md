@@ -15,7 +15,7 @@ lib/
 │   ├── message_model.dart
 │   ├── chat_model.dart
 │
-├── services/             # Services for Firebase, WebRTC, and Encryption
+├── services/             #Services for Firebase, WebRTC, and Encryption
 │   ├── auth_service.dart
 │   ├── chat_service.dart
 │   ├── webrtc_service.dart
