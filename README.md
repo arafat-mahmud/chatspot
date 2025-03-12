@@ -27,7 +27,7 @@ lib/
 │   │   ├── sign_up.dart
 │   │   ├── forgot_password.dart
 │   │
-│   ├── chat/
+│   ├── chat/ 
 │   │   ├── chat_screen.dart
 │   │   ├── call_screen.dart
 │   │   ├── chat_list.dart
