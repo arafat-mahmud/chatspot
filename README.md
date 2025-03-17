@@ -76,5 +76,4 @@ Important Notes:
   - flutter upgrade
   - flutter pub upgrade
 
-
 open Runner.xcodeproj
