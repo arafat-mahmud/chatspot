@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../chat/user_chat_screen.dart';
 
 class SearchPage extends StatefulWidget {
   @override
@@ -9,7 +10,7 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  List<String> _results = [];
+  List<Map<String, dynamic>> _results = [];
 
   @override
   void initState() {
@@ -30,30 +31,34 @@ class _SearchPageState extends State<SearchPage> {
 
     if (query.isNotEmpty) {
       try {
-        // Use the query directly with '@' for matching
         final usernameWithAt = query.startsWith('@') ? query : '@$query';
-        print("Searching for username: $usernameWithAt"); // Debugging output
 
         final userDocs = await FirebaseFirestore.instance
             .collection('users')
             .where('username', isEqualTo: usernameWithAt)
             .get();
 
-        print(
-            "Documents retrieved: ${userDocs.docs.length}"); // Debugging output
-
         if (userDocs.docs.isNotEmpty) {
           setState(() {
-            _results =
-                userDocs.docs.map((doc) => doc['username'] as String).toList();
+            _results = userDocs.docs
+                .map((doc) => {"userId": doc.id, "username": doc['username']})
+                .toList();
           });
-        } else {
-          print("No matching usernames found."); // Debugging output
         }
       } catch (e) {
         print("Error searching for user: $e");
       }
     }
+  }
+
+  void _startChat(String userId, String userName) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            UserChatScreen(userId: userId, userName: userName),
+      ),
+    );
   }
 
   @override
@@ -75,9 +80,6 @@ class _SearchPageState extends State<SearchPage> {
                 controller: _searchController,
                 focusNode: _focusNode,
                 onChanged: _onSearchChanged,
-                onSubmitted: (value) {
-                  _onSearchChanged(value); // Trigger search on Enter
-                },
                 decoration: InputDecoration(
                   hintText: 'Search...',
                   border: InputBorder.none,
@@ -94,10 +96,14 @@ class _SearchPageState extends State<SearchPage> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView.builder(
-          itemCount: _results.length, // Number of results to display
+          itemCount: _results.length,
           itemBuilder: (context, index) {
             return ListTile(
-              title: Text(_results[index]), // Display the username
+              title: Text(_results[index]["username"]!),
+              onTap: () {
+                _startChat(_results[index]["userId"]!,
+                    _results[index]["username"]!);
+              },
             );
           },
         ),
