@@ -7,7 +7,8 @@ class UserChatScreen extends StatefulWidget {
   final String userId;
   final String userName;
 
-  UserChatScreen({Key? key, required this.userId, required this.userName}) : super(key: key);
+  UserChatScreen({Key? key, required this.userId, required this.userName})
+      : super(key: key);
 
   @override
   _UserChatScreenState createState() => _UserChatScreenState();
@@ -58,58 +59,111 @@ class _UserChatScreenState extends State<UserChatScreen> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     var msg = messages[index];
+                    DateTime? timestamp = msg['timestamp']?.toDate();
                     bool isUser = msg['senderId'] == currentUserId;
                     String messageText = msg['text'];
                     bool isShortMessage = messageText.length <= 5;
-                    
-                    return Align(
-                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                        padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
-                        decoration: BoxDecoration(
-                          color: isUser ? Color.fromARGB(231, 11, 167, 244) : Colors.white,
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(20),
-                            topRight: Radius.circular(20),
-                            bottomLeft: isUser ? Radius.circular(20) : Radius.circular(0),
-                            bottomRight: isUser ? Radius.circular(22) : Radius.circular(20),
+
+                    bool showDateHeader = false;
+
+                    if (index == messages.length - 1) {
+                      showDateHeader = true;
+                    } else {
+                      var prevMsg = messages[index + 1];
+                      DateTime? prevTimestamp = prevMsg['timestamp']?.toDate();
+
+                      if (prevTimestamp != null && timestamp != null) {
+                        if (timestamp.day != prevTimestamp.day ||
+                            timestamp.month != prevTimestamp.month ||
+                            timestamp.year != prevTimestamp.year) {
+                          showDateHeader = true;
+                        }
+                      }
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (showDateHeader)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Center(
+                              child: Text(
+                                _formatDate(timestamp),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ),
+                          ),
+                        Align(
+                          alignment: isUser
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            margin: EdgeInsets.symmetric(
+                                vertical: 4.0, horizontal: 8.0),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12.0, vertical: 7.0),
+                            decoration: BoxDecoration(
+                              color: isUser
+                                  ? Color.fromARGB(231, 11, 167, 244)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(20),
+                                topRight: Radius.circular(20),
+                                bottomLeft: isUser
+                                    ? Radius.circular(20)
+                                    : Radius.circular(0),
+                                bottomRight: isUser
+                                    ? Radius.circular(22)
+                                    : Radius.circular(20),
+                              ),
+                            ),
+                            constraints: BoxConstraints(
+                              maxWidth:
+                                  MediaQuery.of(context).size.width * 0.75,
+                            ),
+                            child: isShortMessage
+                                ? Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        messageText,
+                                        style: TextStyle(color: Colors.black),
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        _formatTimestamp(timestamp),
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey[700]),
+                                      ),
+                                    ],
+                                  )
+                                : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        messageText,
+                                        style: TextStyle(color: Colors.black),
+                                      ),
+                                      SizedBox(height: 3),
+                                      Text(
+                                        _formatTimestamp(timestamp),
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey[700]),
+                                      ),
+                                    ],
+                                  ),
                           ),
                         ),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.75,
-                        ),
-                        child: isShortMessage
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    messageText,
-                                    style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    _formatTimestamp(msg['timestamp']?.toDate()),
-                                    style: TextStyle(fontSize: 10, color: Colors.grey[700]),
-                                  ),
-                                ],
-                              )
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    messageText,
-                                    style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
-                                  ),
-                                  SizedBox(height: 1),
-                                  Text(
-                                    _formatTimestamp(msg['timestamp']?.toDate()),
-                                    style: TextStyle(fontSize: 10, color: Colors.grey[700]),
-                                  ),
-                                ],
-                              ),
-                      ),
+                        SizedBox(height: 10),
+                      ],
                     );
                   },
                 );
@@ -169,7 +223,11 @@ class _UserChatScreenState extends State<UserChatScreen> {
     String message = _messageController.text.trim();
     if (message.isNotEmpty) {
       try {
-        await FirebaseFirestore.instance.collection('chats').doc(chatId).collection('messages').add({
+        await FirebaseFirestore.instance
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .add({
           'text': message,
           'timestamp': FieldValue.serverTimestamp(),
           'senderId': currentUserId,
@@ -196,9 +254,39 @@ class _UserChatScreenState extends State<UserChatScreen> {
 
   String _formatTimestamp(DateTime? timestamp) {
     if (timestamp == null) return "";
-    String hour = timestamp.hour % 12 == 0 ? '12' : (timestamp.hour % 12).toString();
-    String minute = timestamp.minute.toString().padLeft(2, '0');
-    String period = timestamp.hour >= 12 ? 'PM' : 'AM';
-    return "$hour:$minute $period";
+    return "${_getMonth(timestamp.month)} ${timestamp.day}, "
+        "${timestamp.hour % 12 == 0 ? '12' : (timestamp.hour % 12)}:"
+        "${timestamp.minute.toString().padLeft(2, '0')} "
+        "${timestamp.hour >= 12 ? 'PM' : 'AM'}";
+  }
+
+  String _formatDate(DateTime? timestamp) {
+    if (timestamp == null) return "";
+
+    bool isFirstDayOfYear = timestamp.month == 1 && timestamp.day == 1;
+
+    if (isFirstDayOfYear) {
+      return "${_getMonth(timestamp.month)} ${timestamp.day}, ${timestamp.year}"; // Show year only on January 1st
+    } else {
+      return "${_getMonth(timestamp.month)} ${timestamp.day}"; // Show only day and month for other days
+    }
+  }
+
+  String _getMonth(int month) {
+    List<String> months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ];
+    return months[month - 1];
   }
 }
