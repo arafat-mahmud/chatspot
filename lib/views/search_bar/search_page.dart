@@ -41,7 +41,11 @@ class _SearchPageState extends State<SearchPage> {
         if (userDocs.docs.isNotEmpty) {
           setState(() {
             _results = userDocs.docs
-                .map((doc) => {"userId": doc.id, "username": doc['username']})
+                .map((doc) => {
+                      "userId": doc.id,
+                      "username": doc['username'],
+                      "name": doc['name']
+                    })
                 .toList();
           });
         }
@@ -52,14 +56,11 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _startChat(String userId, String userName) {
-    String cleanedUserName =
-        userName.startsWith('@') ? userName.substring(1) : userName;
-
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
-            UserChatScreen(userId: userId, userName: cleanedUserName),
+            UserChatScreen(userId: userId, userName: userName),
       ),
     );
   }
@@ -105,7 +106,7 @@ class _SearchPageState extends State<SearchPage> {
               title: Text(_results[index]["username"]!),
               onTap: () {
                 _startChat(
-                    _results[index]["userId"]!, _results[index]["username"]!);
+                    _results[index]["userId"]!, _results[index]["name"]!);
               },
             );
           },
