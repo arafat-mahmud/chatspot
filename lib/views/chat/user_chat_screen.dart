@@ -254,11 +254,11 @@ class _UserChatScreenState extends State<UserChatScreen> {
 
   String _formatTimestamp(DateTime? timestamp) {
     if (timestamp == null) return "";
-    return 
+    return
         //"${_getMonth(timestamp.month)} ${timestamp.day}, "
         "${timestamp.hour % 12 == 0 ? '12' : (timestamp.hour % 12)}:"
-        "${timestamp.minute.toString().padLeft(2, '0')} "
-        "${timestamp.hour >= 12 ? 'PM' : 'AM'}";
+            "${timestamp.minute.toString().padLeft(2, '0')} "
+            "${timestamp.hour >= 12 ? 'PM' : 'AM'}";
   }
 
   String _formatDate(DateTime? timestamp) {
@@ -270,9 +270,9 @@ class _UserChatScreenState extends State<UserChatScreen> {
       return "${_getMonth(timestamp.month)} ${timestamp.day}, ${timestamp.year}"; // Show year only on January 1st
     } else {
       return "${_getMonth(timestamp.month)} ${timestamp.day}, "
-           "${timestamp.hour % 12 == 0 ? '12' : (timestamp.hour % 12)}:"
-           "${timestamp.minute.toString().padLeft(2, '0')} "
-           "${timestamp.hour >= 12 ? 'PM' : 'AM'}";
+          "${timestamp.hour % 12 == 0 ? '12' : (timestamp.hour % 12)}:"
+          "${timestamp.minute.toString().padLeft(2, '0')} "
+          "${timestamp.hour >= 12 ? 'PM' : 'AM'}";
     }
   }
 
