@@ -52,11 +52,14 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _startChat(String userId, String userName) {
+    String cleanedUserName =
+        userName.startsWith('@') ? userName.substring(1) : userName;
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
-            UserChatScreen(userId: userId, userName: userName),
+            UserChatScreen(userId: userId, userName: cleanedUserName),
       ),
     );
   }
@@ -101,8 +104,8 @@ class _SearchPageState extends State<SearchPage> {
             return ListTile(
               title: Text(_results[index]["username"]!),
               onTap: () {
-                _startChat(_results[index]["userId"]!,
-                    _results[index]["username"]!);
+                _startChat(
+                    _results[index]["userId"]!, _results[index]["username"]!);
               },
             );
           },
