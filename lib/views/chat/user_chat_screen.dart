@@ -109,8 +109,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                 horizontal: 12.0, vertical: 7.0),
                             decoration: BoxDecoration(
                               color: isUser
-                                  ? Color.fromARGB(231, 11, 167, 244)
-                                  : Colors.white,
+                                  ? Color.fromARGB(231, 11, 69, 244) // Sent message background
+                                  : Colors.white, // Received message background
                               borderRadius: BorderRadius.only(
                                 topLeft: Radius.circular(20),
                                 topRight: Radius.circular(20),
@@ -133,14 +133,18 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                     children: [
                                       Text(
                                         messageText,
-                                        style: TextStyle(color: Colors.black),
+                                        style: TextStyle(
+                                          color: isUser
+                                              ? Colors.white
+                                              : const Color.fromARGB(255, 255, 255, 255), // Text color change
+                                        ),
                                       ),
                                       SizedBox(width: 6),
                                       Text(
                                         _formatTimestamp(timestamp),
                                         style: TextStyle(
                                             fontSize: 10,
-                                            color: Colors.grey[700]),
+                                            color: const Color.fromARGB(255, 174, 172, 172)),
                                       ),
                                     ],
                                   )
@@ -149,14 +153,19 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                     children: [
                                       Text(
                                         messageText,
-                                        style: TextStyle(color: Colors.black),
+                                        style: TextStyle(
+                                          color: isUser
+                                              ? Colors.white
+                                              : Colors
+                                                  .black, // Text color change
+                                        ),
                                       ),
                                       SizedBox(height: 3),
                                       Text(
                                         _formatTimestamp(timestamp),
                                         style: TextStyle(
                                             fontSize: 10,
-                                            color: Colors.grey[700]),
+                                            color: const Color.fromARGB(255, 174, 172, 172)),
                                       ),
                                     ],
                                   ),
