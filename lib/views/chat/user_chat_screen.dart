@@ -137,11 +137,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                         style: TextStyle(
                                           color: isUser
                                               ? Colors.white
-                                              : const Color.fromARGB(
-                                                  255,
-                                                  255,
-                                                  255,
-                                                  255), // Text color change
+                                              : const Color.fromARGB(255, 0, 0, 0), // Text color change
                                         ),
                                       ),
                                       SizedBox(width: 6),
