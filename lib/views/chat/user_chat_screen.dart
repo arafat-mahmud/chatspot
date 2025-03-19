@@ -20,10 +20,9 @@ class _UserChatScreenState extends State<UserChatScreen> {
 
   String get currentUserId => FirebaseAuth.instance.currentUser!.uid;
 
-  /// 🔹 Fix Chat ID Generation (Ensures Consistency for Both Users)
   String get chatId {
     List<String> ids = [currentUserId, widget.userId];
-    ids.sort(); // Ensures consistency
+    ids.sort();
     return ids.join("-");
   }
 
@@ -32,6 +31,10 @@ class _UserChatScreenState extends State<UserChatScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.userName),
+        actions: [
+          IconButton(icon: Icon(Icons.video_call), onPressed: () {}),
+          IconButton(icon: Icon(Icons.call), onPressed: () {}),
+        ],
       ),
       body: Column(
         children: [
@@ -56,17 +59,56 @@ class _UserChatScreenState extends State<UserChatScreen> {
                   itemBuilder: (context, index) {
                     var msg = messages[index];
                     bool isUser = msg['senderId'] == currentUserId;
-
+                    String messageText = msg['text'];
+                    bool isShortMessage = messageText.length <= 5;
+                    
                     return Align(
                       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
                         margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
                         padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
                         decoration: BoxDecoration(
-                          color: isUser ? Colors.blue : Colors.grey[300],
-                          borderRadius: BorderRadius.circular(10),
+                          color: isUser ? Color.fromARGB(231, 11, 167, 244) : Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
+                            bottomLeft: isUser ? Radius.circular(20) : Radius.circular(0),
+                            bottomRight: isUser ? Radius.circular(22) : Radius.circular(20),
+                          ),
                         ),
-                        child: Text(msg['text']),
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                        ),
+                        child: isShortMessage
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    messageText,
+                                    style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    _formatTimestamp(msg['timestamp']?.toDate()),
+                                    style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    messageText,
+                                    style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
+                                  ),
+                                  SizedBox(height: 1),
+                                  Text(
+                                    _formatTimestamp(msg['timestamp']?.toDate()),
+                                    style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+                                  ),
+                                ],
+                              ),
                       ),
                     );
                   },
@@ -131,7 +173,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
           'text': message,
           'timestamp': FieldValue.serverTimestamp(),
           'senderId': currentUserId,
-          'receiverId': widget.userId, // Ensure correct receiver info
+          'receiverId': widget.userId,
         });
 
         _messageController.clear();
@@ -150,5 +192,13 @@ class _UserChatScreenState extends State<UserChatScreen> {
         curve: Curves.easeOut,
       );
     });
+  }
+
+  String _formatTimestamp(DateTime? timestamp) {
+    if (timestamp == null) return "";
+    String hour = timestamp.hour % 12 == 0 ? '12' : (timestamp.hour % 12).toString();
+    String minute = timestamp.minute.toString().padLeft(2, '0');
+    String period = timestamp.hour >= 12 ? 'PM' : 'AM';
+    return "$hour:$minute $period";
   }
 }
