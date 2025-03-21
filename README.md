@@ -10,16 +10,6 @@ lib/
 │   ├── theme.dart
 │   ├── encryption.dart   # Functions for encrypting/decrypting messages
 │
-├── models/               # Data models
-│   ├── user_model.dart
-│   ├── message_model.dart
-│   ├── chat_model.dart
-│
-├── services/             #Services for Firebase, WebRTC, and Encryption
-│   ├── auth_service.dart
-│   ├── chat_service.dart
-│   ├── webrtc_service.dart
-│   ├── encryption_service.dart
 │
 ├── views/
 │   ├── auth/
