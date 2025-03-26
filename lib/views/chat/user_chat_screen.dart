@@ -18,6 +18,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isEmojiVisible = false;
+  bool _isSending = false;
 
   String get currentUserId => FirebaseAuth.instance.currentUser!.uid;
 
@@ -28,6 +29,27 @@ class _UserChatScreenState extends State<UserChatScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_isEmojiVisible) {
+      setState(() {
+        _isEmojiVisible = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -35,18 +57,18 @@ class _UserChatScreenState extends State<UserChatScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.video_call),
-            onPressed: () {}, // Added empty onPressed
+            onPressed: () {},
           ),
           IconButton(
             icon: Icon(Icons.call),
-            onPressed: () {}, // Added empty onPressed
+            onPressed: () {},
           ),
         ],
       ),
       body: Column(
         children: [
           Expanded(
-            child: StreamBuilder(
+            child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('chats')
                   .doc(chatId)
@@ -127,6 +149,15 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                     ? Radius.circular(22)
                                     : Radius.circular(20),
                               ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withValues(
+                                      red: 0.2, green: 0.2, blue: 0.2),
+                                  spreadRadius: 1,
+                                  blurRadius: 2,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
                             ),
                             constraints: BoxConstraints(
                               maxWidth:
@@ -142,17 +173,17 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                         style: TextStyle(
                                           color: isUser
                                               ? Colors.white
-                                              : const Color.fromARGB(
-                                                  255, 0, 0, 0),
-                                        ), // Added missing closing parenthesis
+                                              : Colors.black,
+                                        ),
                                       ),
                                       SizedBox(width: 6),
                                       Text(
                                         _formatTimestamp(timestamp),
                                         style: TextStyle(
                                           fontSize: 10,
-                                          color: const Color.fromARGB(
-                                              255, 174, 172, 172),
+                                          color: isUser
+                                              ? Colors.white.withOpacity(0.8)
+                                              : Colors.grey[700],
                                         ),
                                       ),
                                     ],
@@ -172,15 +203,16 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                       Text(
                                         _formatTimestamp(timestamp),
                                         style: TextStyle(
-                                            fontSize: 10,
-                                            color: const Color.fromARGB(
-                                                255, 174, 172, 172)),
+                                          fontSize: 10,
+                                          color: isUser
+                                              ? Colors.white.withOpacity(0.8)
+                                              : Colors.grey[700],
+                                        ),
                                       ),
                                     ],
                                   ),
                           ),
                         ),
-                        SizedBox(height: 0),
                       ],
                     );
                   },
@@ -203,31 +235,46 @@ class _UserChatScreenState extends State<UserChatScreen> {
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
+                IconButton(
+                  icon: Icon(Icons.emoji_emotions),
+                  onPressed: () {
+                    setState(() {
+                      _isEmojiVisible = !_isEmojiVisible;
+                      if (_isEmojiVisible) {
+                        FocusScope.of(context).unfocus();
+                      }
+                    });
+                  },
+                ),
                 Expanded(
                   child: TextField(
                     controller: _messageController,
                     onTap: () {
-                      setState(() {
-                        _isEmojiVisible = false;
-                      });
+                      if (_isEmojiVisible) {
+                        setState(() {
+                          _isEmojiVisible = false;
+                        });
+                      }
                     },
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
-                      border: OutlineInputBorder(),
-                      prefixIcon: IconButton(
-                        icon: Icon(Icons.emoji_emotions),
-                        onPressed: () {
-                          setState(() {
-                            _isEmojiVisible = !_isEmojiVisible;
-                          });
-                        },
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(25.0),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 12.0,
                       ),
                     ),
+                    onSubmitted: (value) => _sendMessage(),
                   ),
                 ),
                 IconButton(
                   icon: Icon(Icons.send),
-                  onPressed: _sendMessage,
+                  onPressed: _isSending ? null : _sendMessage,
                 ),
               ],
             ),
@@ -238,75 +285,67 @@ class _UserChatScreenState extends State<UserChatScreen> {
   }
 
   void _sendMessage() async {
+    if (_isSending) return;
+
     String message = _messageController.text.trim();
-    if (message.isNotEmpty) {
-      try {
-        DocumentReference chatRef =
-            FirebaseFirestore.instance.collection('chats').doc(chatId);
-        DocumentSnapshot chatSnapshot = await chatRef.get();
+    if (message.isEmpty) return;
 
-        // Get current user data from Firestore
-        DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUserId)
-            .get();
+    setState(() {
+      _isSending = true;
+      _isEmojiVisible = false;
+    });
 
-        // Get recipient user data from Firestore
-        DocumentSnapshot recipientUserDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.userId)
-            .get();
+    try {
+      DocumentReference chatRef =
+          FirebaseFirestore.instance.collection('chats').doc(chatId);
 
-        String? currentLastMessage =
-            chatSnapshot.exists ? chatSnapshot.get('lastMessage') : null;
+      WriteBatch batch = FirebaseFirestore.instance.batch();
 
-        DocumentReference messageRef = chatRef.collection('messages').doc();
+      // Add new message
+      DocumentReference messageRef = chatRef.collection('messages').doc();
+      batch.set(messageRef, {
+        'text': message,
+        'timestamp': FieldValue.serverTimestamp(),
+        'senderId': currentUserId,
+        'receiverId': widget.userId,
+      });
 
-        await messageRef.set({
-          'text': message,
-          'timestamp': FieldValue.serverTimestamp(),
-          'senderId': currentUserId,
-          'receiverId': widget.userId,
-        });
-
-        if (currentLastMessage != message) {
-          await chatRef.set({
-            'participants': {
-              currentUserId: true,
-              widget.userId: true,
-            },
+      // Update chat document
+      batch.set(
+          chatRef,
+          {
             'lastMessage': message,
             'timestamp': FieldValue.serverTimestamp(),
-            'users': {
-              currentUserId: {
-                'username': currentUserDoc['username'] ?? 'Unknown',
-                'name': currentUserDoc['name'] ?? 'Unknown',
-                'userId': currentUserId,
-              },
-              widget.userId: {
-                'username': recipientUserDoc['username'] ?? 'Unknown',
-                'name': recipientUserDoc['name'] ?? widget.userName,
-                'userId': widget.userId,
-              },
-            },
-          }, SetOptions(merge: true));
-        }
+          },
+          SetOptions(merge: true));
 
-        _messageController.clear();
-        _scrollToBottom();
-      } catch (e) {
-        print("Error sending message: $e");
+      await batch.commit();
+
+      _messageController.clear();
+      _scrollToBottom();
+    } catch (e) {
+      print("Error sending message: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to send message")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+        });
       }
     }
   }
 
   void _scrollToBottom() {
-    Future.delayed(Duration(milliseconds: 300), () {
-      _scrollController.animateTo(
-        0.0,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+    Future.delayed(Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
 
