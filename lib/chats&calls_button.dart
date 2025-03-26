@@ -1,8 +1,8 @@
+import 'package:chatspot/views/chat/chat_list.dart'; // Correct import for ChatList
+import 'package:chatspot/views/chat/call_screen.dart';
 import 'package:flutter/material.dart';
-import 'drawer_button.dart'; // Import the CustomDrawer
-import 'views/chat/chat_list.dart'; // Import the ChatsPage
-import 'views/chat/call_screen.dart'; // Import the CallScreen
-import 'views/search_bar/search_page.dart'; // Import the SearchPage
+import 'drawer_button.dart';
+import 'views/search_bar/search_page.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -13,7 +13,7 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
   static final List<Widget> _pages = <Widget>[
-    ChatsPage(), // This uses the updated ChatList
+    ChatList(),
     CallScreen(),
   ];
 
@@ -39,21 +39,17 @@ class _HomePageState extends State<HomePage> {
             width: double.infinity,
             child: Text(
               _titles[_selectedIndex],
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold),
               textAlign: TextAlign.start,
             ),
           ),
           actions: <Widget>[
             IconButton(
-              icon: Icon(Icons.search), // Search icon
+              icon: Icon(Icons.search),
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) =>
-                          SearchPage()), // Navigate to SearchPage
+                  MaterialPageRoute(builder: (context) => SearchPage()),
                 );
               },
             ),
@@ -85,7 +81,7 @@ class _HomePageState extends State<HomePage> {
         selectedItemColor: const Color.fromARGB(255, 21, 138, 234),
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed, // Ensure fixed type
+        type: BottomNavigationBarType.fixed,
       ),
     );
   }

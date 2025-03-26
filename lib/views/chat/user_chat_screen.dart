@@ -33,8 +33,14 @@ class _UserChatScreenState extends State<UserChatScreen> {
       appBar: AppBar(
         title: Text(widget.userName),
         actions: [
-          IconButton(icon: Icon(Icons.video_call), onPressed: () {}),
-          IconButton(icon: Icon(Icons.call), onPressed: () {}),
+          IconButton(
+            icon: Icon(Icons.video_call),
+            onPressed: () {}, // Added empty onPressed
+          ),
+          IconButton(
+            icon: Icon(Icons.call),
+            onPressed: () {}, // Added empty onPressed
+          ),
         ],
       ),
       body: Column(
@@ -109,9 +115,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                 horizontal: 12.0, vertical: 7.0),
                             decoration: BoxDecoration(
                               color: isUser
-                                  ? Color.fromARGB(231, 11, 69,
-                                      244) // Sent message background
-                                  : Colors.white, // Received message background
+                                  ? Color.fromARGB(231, 11, 69, 244)
+                                  : Colors.white,
                               borderRadius: BorderRadius.only(
                                 topLeft: Radius.circular(20),
                                 topRight: Radius.circular(20),
@@ -137,17 +142,18 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                         style: TextStyle(
                                           color: isUser
                                               ? Colors.white
-                                              : const Color.fromARGB(255, 0, 0,
-                                                  0), // Text color change
-                                        ),
+                                              : const Color.fromARGB(
+                                                  255, 0, 0, 0),
+                                        ), // Added missing closing parenthesis
                                       ),
                                       SizedBox(width: 6),
                                       Text(
                                         _formatTimestamp(timestamp),
                                         style: TextStyle(
-                                            fontSize: 10,
-                                            color: const Color.fromARGB(
-                                                255, 174, 172, 172)),
+                                          fontSize: 10,
+                                          color: const Color.fromARGB(
+                                              255, 174, 172, 172),
+                                        ),
                                       ),
                                     ],
                                   )
@@ -159,8 +165,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                         style: TextStyle(
                                           color: isUser
                                               ? Colors.white
-                                              : Colors
-                                                  .black, // Text color change
+                                              : Colors.black,
                                         ),
                                       ),
                                       SizedBox(height: 3),
@@ -236,16 +241,56 @@ class _UserChatScreenState extends State<UserChatScreen> {
     String message = _messageController.text.trim();
     if (message.isNotEmpty) {
       try {
-        await FirebaseFirestore.instance
-            .collection('chats')
-            .doc(chatId)
-            .collection('messages')
-            .add({
+        DocumentReference chatRef =
+            FirebaseFirestore.instance.collection('chats').doc(chatId);
+        DocumentSnapshot chatSnapshot = await chatRef.get();
+
+        // Get current user data from Firestore
+        DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .get();
+
+        // Get recipient user data from Firestore
+        DocumentSnapshot recipientUserDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.userId)
+            .get();
+
+        String? currentLastMessage =
+            chatSnapshot.exists ? chatSnapshot.get('lastMessage') : null;
+
+        DocumentReference messageRef = chatRef.collection('messages').doc();
+
+        await messageRef.set({
           'text': message,
           'timestamp': FieldValue.serverTimestamp(),
           'senderId': currentUserId,
           'receiverId': widget.userId,
         });
+
+        if (currentLastMessage != message) {
+          await chatRef.set({
+            'participants': {
+              currentUserId: true,
+              widget.userId: true,
+            },
+            'lastMessage': message,
+            'timestamp': FieldValue.serverTimestamp(),
+            'users': {
+              currentUserId: {
+                'username': currentUserDoc['username'] ?? 'Unknown',
+                'name': currentUserDoc['name'] ?? 'Unknown',
+                'userId': currentUserId,
+              },
+              widget.userId: {
+                'username': recipientUserDoc['username'] ?? 'Unknown',
+                'name': recipientUserDoc['name'] ?? widget.userName,
+                'userId': widget.userId,
+              },
+            },
+          }, SetOptions(merge: true));
+        }
 
         _messageController.clear();
         _scrollToBottom();
@@ -267,11 +312,9 @@ class _UserChatScreenState extends State<UserChatScreen> {
 
   String _formatTimestamp(DateTime? timestamp) {
     if (timestamp == null) return "";
-    return
-        //"${_getMonth(timestamp.month)} ${timestamp.day}, "
-        "${timestamp.hour % 12 == 0 ? '12' : (timestamp.hour % 12)}:"
-            "${timestamp.minute.toString().padLeft(2, '0')} "
-            "${timestamp.hour >= 12 ? 'PM' : 'AM'}";
+    return "${timestamp.hour % 12 == 0 ? '12' : (timestamp.hour % 12)}:"
+        "${timestamp.minute.toString().padLeft(2, '0')} "
+        "${timestamp.hour >= 12 ? 'PM' : 'AM'}";
   }
 
   String _formatDate(DateTime? timestamp) {
@@ -280,7 +323,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
     bool isFirstDayOfYear = timestamp.month == 1 && timestamp.day == 1;
 
     if (isFirstDayOfYear) {
-      return "${_getMonth(timestamp.month)} ${timestamp.day}, ${timestamp.year}"; // Show year only on January 1st
+      return "${_getMonth(timestamp.month)} ${timestamp.day}, ${timestamp.year}";
     } else {
       return "${_getMonth(timestamp.month)} ${timestamp.day}, "
           "${timestamp.hour % 12 == 0 ? '12' : (timestamp.hour % 12)}:"
