@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'user_chat_screen.dart';
 
 class ChatList extends StatefulWidget {
+  const ChatList({super.key}); // Added const constructor for better performance
+
   @override
   _ChatListState createState() => _ChatListState();
 }
@@ -47,6 +49,17 @@ class _ChatListState extends State<ChatList> {
   }
 
   Future<void> _refreshChats() async {
+    // Simulate a refresh delay to give user feedback
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    if (_currentUserId == null) return;
+
+    // Reset the stream to force a reload
+    setState(() {
+      _chatStream = null; // Temporarily clear the stream
+    });
+
+    // Re-fetch chats
     _fetchChats();
   }
 
@@ -55,23 +68,27 @@ class _ChatListState extends State<ChatList> {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _refreshChats,
+        color: Colors.blue, // Customize refresh indicator color
+        backgroundColor: Colors.white, // Customize background
         child: StreamBuilder<QuerySnapshot>(
           stream: _chatStream,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+            if (snapshot.connectionState == ConnectionState.waiting && _chatStream != null) {
+              return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
               return Center(
-                  child: Text("Error loading chats: ${snapshot.error}"));
+                child: Text("Error loading chats: ${snapshot.error}"),
+              );
             }
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return Center(child: Text("No active chats yet."));
+              return const Center(child: Text("No active chats yet."));
             }
 
             var chatDocs = snapshot.data!.docs;
 
             return ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(), // Ensure scrollability even with few items
               itemCount: chatDocs.length,
               itemBuilder: (context, index) {
                 var chatData = chatDocs[index].data() as Map<String, dynamic>;
@@ -86,14 +103,14 @@ class _ChatListState extends State<ChatList> {
                 );
 
                 if (otherUserId.isEmpty) {
-                  return SizedBox.shrink();
+                  return const SizedBox.shrink();
                 }
 
                 String? name = users[otherUserId]?['name'];
                 String? username = users[otherUserId]?['username'];
 
                 if (name == null || username == null) {
-                  return SizedBox.shrink();
+                  return const SizedBox.shrink();
                 }
 
                 return ListTile(
@@ -104,7 +121,7 @@ class _ChatListState extends State<ChatList> {
                   subtitle: Text(lastMessage),
                   trailing: Text(
                     _formatMessageTime(timestamp),
-                    style: TextStyle(color: Colors.grey),
+                    style: const TextStyle(color: Colors.grey),
                   ),
                   onTap: () {
                     Navigator.push(
@@ -132,8 +149,7 @@ class _ChatListState extends State<ChatList> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = DateTime(now.year, now.month, now.day - 1);
-    final messageDate =
-        DateTime(timestamp.year, timestamp.month, timestamp.day);
+    final messageDate = DateTime(timestamp.year, timestamp.month, timestamp.day);
 
     if (messageDate == today) {
       return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
