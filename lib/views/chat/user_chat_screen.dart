@@ -403,6 +403,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
       });
 
       // Show loading indicator
+      // ignore: unused_local_variable
       final loadingSnackBar = ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
