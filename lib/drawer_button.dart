@@ -13,7 +13,8 @@ class CustomDrawer extends StatelessWidget {
   final CloudinaryService _cloudinaryService = CloudinaryService();
   final ImagePicker _picker = ImagePicker();
 
-  Future<void> _uploadProfilePicture(BuildContext context, String userId) async {
+  Future<void> _uploadProfilePicture(
+      BuildContext context, String userId) async {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext bc) {
@@ -43,36 +44,37 @@ class CustomDrawer extends StatelessWidget {
     );
   }
 
+  // In drawer_button.dart, modify the _pickImage method only:
   Future<void> _pickImage(
-      ImageSource source, BuildContext context, String userId) async {
-    try {
-      final XFile? image = await _picker.pickImage(source: source);
-      if (image != null) {
-        final scaffoldMessenger = ScaffoldMessenger.of(context);
-        scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text('Uploading image...')),
-        );
+    ImageSource source, BuildContext context, String userId) async {
+  try {
+    final XFile? image = await _picker.pickImage(source: source);
+    if (image != null) {
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text('Uploading image...')),
+      );
 
-        // Upload to Cloudinary
-        final imageUrl = await _cloudinaryService.uploadProfilePicture(image.path);
+      // Always use uploadProfilePicture for profile images, regardless of source
+      final imageUrl = await _cloudinaryService.uploadProfilePicture(image.path);
 
-        // Update Firestore
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .update({'profilePictureUrl': imageUrl});
+      // Update Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .update({'profilePictureUrl': imageUrl});
 
-        scaffoldMessenger.hideCurrentSnackBar();
-        scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text('Profile picture updated!')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to upload image: $e')),
+      scaffoldMessenger.hideCurrentSnackBar();
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text('Profile picture updated!')),
       );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to upload image: $e')),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +116,8 @@ class CustomDrawer extends StatelessWidget {
                         profilePictureUrl != null
                             ? CircleAvatar(
                                 radius: 29,
-                                backgroundImage: NetworkImage(profilePictureUrl),
+                                backgroundImage:
+                                    NetworkImage(profilePictureUrl),
                               )
                             : Icon(
                                 Icons.account_circle,
@@ -126,7 +129,8 @@ class CustomDrawer extends StatelessWidget {
                             bottom: 0,
                             right: 0,
                             child: GestureDetector(
-                              onTap: () => _uploadProfilePicture(context, user.uid),
+                              onTap: () =>
+                                  _uploadProfilePicture(context, user.uid),
                               child: Container(
                                 padding: EdgeInsets.all(4),
                                 decoration: BoxDecoration(
