@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -114,27 +115,59 @@ class _ChatListState extends State<ChatList> {
                 }
 
                 return ListTile(
-                  leading: CircleAvatar(
-                    child: Text(name[0].toUpperCase()),
-                  ),
-                  title: Text(name),
-                  subtitle: Text(lastMessage),
-                  trailing: Text(
-                    _formatMessageTime(timestamp),
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UserChatScreen(
-                          userId: otherUserId,
-                          userName: name,
-                        ),
-                      ),
-                    ).then((_) => _refreshChats());
-                  },
-                );
+  leading: FutureBuilder<DocumentSnapshot>(
+    future: FirebaseFirestore.instance
+        .collection('users')
+        .doc(otherUserId)
+        .get(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return CircleAvatar(
+          child: Text(name[0].toUpperCase()),
+        );
+      }
+      
+      if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
+        return CircleAvatar(
+          child: Text(name[0].toUpperCase()),
+        );
+      }
+      
+      final userData = snapshot.data!.data() as Map<String, dynamic>;
+      final profilePictureUrl = userData['profilePictureUrl'];
+      
+      if (profilePictureUrl == null || profilePictureUrl.isEmpty) {
+        return CircleAvatar(
+          child: Text(name[0].toUpperCase()),
+        );
+      }
+      
+      return CircleAvatar(
+        backgroundImage: CachedNetworkImageProvider(profilePictureUrl),
+        child: profilePictureUrl == null 
+            ? Text(name[0].toUpperCase())
+            : null,
+      );
+    },
+  ),
+  title: Text(name),
+  subtitle: Text(lastMessage),
+  trailing: Text(
+    _formatMessageTime(timestamp),
+    style: const TextStyle(color: Colors.grey),
+  ),
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UserChatScreen(
+          userId: otherUserId,
+          userName: name,
+        ),
+      ),
+    ).then((_) => _refreshChats());
+  },
+);
               },
             );
           },
