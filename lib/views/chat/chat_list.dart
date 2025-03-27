@@ -124,6 +124,8 @@ class _ChatListState extends State<ChatList> {
                 }
 
                 final name = users[otherUserId]?['name'] ?? 'Unknown';
+                
+                // ignore: unused_local_variable
                 final username = users[otherUserId]?['username'] ?? '';
 
                 return _ChatListItem(
