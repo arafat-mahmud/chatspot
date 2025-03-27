@@ -258,6 +258,43 @@ class _UserChatScreenState extends State<UserChatScreen> {
                     },
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
+                      suffixIcon: IconButton(
+                        icon: Icon(Icons.attach_file, color: Colors.grey[600]),
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return SafeArea(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    ListTile(
+                                      leading: Icon(Icons.camera_alt),
+                                      title: Text('Camera'),
+                                      onTap: () {
+                                        Navigator.pop(
+                                            context); // Close the bottom sheet
+                                        print("Camera option selected");
+                                        // Add your camera implementation here
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: Icon(Icons.photo_library),
+                                      title: Text('Gallery'),
+                                      onTap: () {
+                                        Navigator.pop(
+                                            context); // Close the bottom sheet
+                                        print("Gallery option selected");
+                                        // Add your gallery implementation here
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25.0),
                         borderSide: BorderSide.none,
