@@ -201,8 +201,8 @@ class _FullScreenImageViewState extends State<FullScreenImageView> {
                     ),
                   ),
                   errorBuilder: (context, error, stackTrace) => Center(
-                    child: Icon(Icons.broken_image,
-                        color: Colors.white, size: 50),
+                    child:
+                        Icon(Icons.broken_image, color: Colors.white, size: 50),
                   ),
                 ),
               ),
