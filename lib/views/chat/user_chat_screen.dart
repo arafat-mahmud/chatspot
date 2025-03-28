@@ -5,7 +5,6 @@ import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:chatspot/services/cloudinary_service.dart';
 
-
 class UserChatScreen extends StatefulWidget {
   final String userId;
   final String userName;
@@ -102,7 +101,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
                     if (index == messages.length - 1) {
                       showDateHeader = true;
                     } else {
-                      var prevMsg = messages[index + 1].data() as Map<String, dynamic>;
+                      var prevMsg =
+                          messages[index + 1].data() as Map<String, dynamic>;
                       DateTime? prevTimestamp = prevMsg['timestamp']?.toDate();
 
                       if (prevTimestamp != null && timestamp != null) {
@@ -132,9 +132,11 @@ class _UserChatScreenState extends State<UserChatScreen> {
                             ),
                           ),
                         if (isImage)
-                          _buildImageMessage(msg['imageUrl'] ?? '', isUser, timestamp)
+                          _buildImageMessage(
+                              msg['imageUrl'] ?? '', isUser, timestamp)
                         else
-                          _buildTextMessage(messageText, isUser, timestamp, isShortMessage),
+                          _buildTextMessage(
+                              messageText, isUser, timestamp, isShortMessage),
                       ],
                     );
                   },
@@ -184,45 +186,47 @@ class _UserChatScreenState extends State<UserChatScreen> {
                         icon: Icon(Icons.attach_file, color: Colors.grey[600]),
                         onPressed: () {
                           showModalBottomSheet(
-  context: context,
-  builder: (BuildContext context) {
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          ListTile(
-            leading: Icon(Icons.camera_alt),
-            title: Text('Camera'),
-            onTap: () async {
-              Navigator.pop(context);
-              final image = await _picker.pickImage(
-                source: ImageSource.camera,
-                imageQuality: 85,
-              );
-              if (image != null) {
-                await _uploadAndSendImage(image.path, source: ImageSource.camera);
-              }
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.photo_library),
-            title: Text('Gallery'),
-            onTap: () async {
-              Navigator.pop(context);
-              final image = await _picker.pickImage(
-                source: ImageSource.gallery,
-                imageQuality: 85,
-              );
-              if (image != null) {
-                await _uploadAndSendImage(image.path, source: ImageSource.gallery);
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  },
-);
+                            context: context,
+                            builder: (BuildContext context) {
+                              return SafeArea(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    ListTile(
+                                      leading: Icon(Icons.camera_alt),
+                                      title: Text('Camera'),
+                                      onTap: () async {
+                                        Navigator.pop(context);
+                                        final image = await _picker.pickImage(
+                                          source: ImageSource.camera,
+                                          imageQuality: 85,
+                                        );
+                                        if (image != null) {
+                                          await _uploadAndSendImage(image.path,
+                                              source: ImageSource.camera);
+                                        }
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: Icon(Icons.photo_library),
+                                      title: Text('Gallery'),
+                                      onTap: () async {
+                                        Navigator.pop(context);
+                                        final image = await _picker.pickImage(
+                                          source: ImageSource.gallery,
+                                          imageQuality: 85,
+                                        );
+                                        if (image != null) {
+                                          await _uploadAndSendImage(image.path,
+                                              source: ImageSource.gallery);
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
                         },
                       ),
                       border: OutlineInputBorder(
@@ -251,7 +255,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
     );
   }
 
-  Widget _buildTextMessage(String message, bool isUser, DateTime? timestamp, bool isShortMessage) {
+  Widget _buildTextMessage(
+      String message, bool isUser, DateTime? timestamp, bool isShortMessage) {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -293,7 +298,9 @@ class _UserChatScreenState extends State<UserChatScreen> {
                     _formatTimestamp(timestamp),
                     style: TextStyle(
                       fontSize: 10,
-                      color: isUser ? Colors.white.withOpacity(0.8) : Colors.grey[700],
+                      color: isUser
+                          ? Colors.white.withOpacity(0.8)
+                          : Colors.grey[700],
                     ),
                   ),
                 ],
@@ -312,7 +319,9 @@ class _UserChatScreenState extends State<UserChatScreen> {
                     _formatTimestamp(timestamp),
                     style: TextStyle(
                       fontSize: 10,
-                      color: isUser ? Colors.white.withOpacity(0.8) : Colors.grey[700],
+                      color: isUser
+                          ? Colors.white.withOpacity(0.8)
+                          : Colors.grey[700],
                     ),
                   ),
                 ],
@@ -396,7 +405,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
     );
   }
 
-  Future<void> _uploadAndSendImage(String imagePath, {required ImageSource source}) async {
+  Future<void> _uploadAndSendImage(String imagePath,
+      {required ImageSource source}) async {
     try {
       setState(() {
         _isSending = true;
@@ -421,8 +431,10 @@ class _UserChatScreenState extends State<UserChatScreen> {
       // Upload to the correct folder based on source
       final cloudinaryService = CloudinaryService();
       final imageUrl = source == ImageSource.camera
-          ? await cloudinaryService.uploadCameraPicture(imagePath)  // Goes to chatspot_camera_pictures
-          : await cloudinaryService.uploadGalleryPicture(imagePath); // Goes to chatspot_gallery_pictures
+          ? await cloudinaryService.uploadCameraPicture(
+              imagePath) // Goes to chatspot_camera_pictures
+          : await cloudinaryService.uploadGalleryPicture(
+              imagePath); // Goes to chatspot_gallery_pictures
 
       // Hide loading indicator
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -440,7 +452,6 @@ class _UserChatScreenState extends State<UserChatScreen> {
 
       // Send to Firestore
       await _sendImageMessage(imageMessage);
-      
     } catch (e) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -586,8 +597,18 @@ class _UserChatScreenState extends State<UserChatScreen> {
 
   String _getMonth(int month) {
     List<String> months = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
     ];
     return months[month - 1];
   }

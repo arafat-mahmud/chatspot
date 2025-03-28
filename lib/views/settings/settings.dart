@@ -1,4 +1,4 @@
-import 'package:chatspot/views/settings/theme_service.dart';
+import 'package:chatspot/views/settings/theme.dart';
 import 'package:flutter/material.dart';
 import '../auth/signin.dart'; // Import the SignInPage
 import 'account_settings.dart'; // Import the AccountSettingsPage
