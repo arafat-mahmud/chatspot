@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:chatspot/views/settings/theme_service.dart'; // Import ThemeService
 
 class EmailVerificationPage extends StatefulWidget {
   @override
@@ -22,12 +23,10 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     try {
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        // Check if email is verified
         setState(() {
           _isVerified = user.emailVerified;
         });
 
-        // Try to get email from Firestore first
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -53,88 +52,112 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Email Address',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: const Color.fromARGB(255, 0, 0, 0),
-          ),
-        ),
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.email,
-                    size: 80,
-                    color: Colors.green,
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Email helps you access your account. It isn\'t visible to others.',
-                    style: TextStyle(
-                        fontSize: 12.0,
-                        color: const Color.fromARGB(179, 0, 0, 0)),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 30),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Email-',
-                        style: TextStyle(
-                            fontSize: 12.0,
-                            color: const Color.fromARGB(255, 0, 0, 0)),
-                      ),
-                      SizedBox(height: 5),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _userEmail,
-                              style: TextStyle(
-                                  fontSize: 12.0,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color.fromARGB(255, 0, 0, 0)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Icon(
-                        _isVerified ? Icons.check_circle : Icons.error,
-                        color: _isVerified
-                            ? const Color.fromARGB(153, 26, 169, 31)
-                            : Colors.orange,
-                        size: 22,
-                      ),
-                      SizedBox(width: 5),
-                      Text(
-                        _isVerified ? 'Verified' : 'Not Verified',
-                        style: TextStyle(
-                            fontSize: 14.0,
-                            color: _isVerified ? Colors.green : Colors.orange,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ],
+    return ValueListenableBuilder<ThemeData>(
+      valueListenable: ThemeService.themeNotifier,
+      builder: (context, theme, child) {
+        final textColor = theme.brightness == Brightness.dark 
+            ? Colors.white 
+            : Colors.black;
+        final secondaryTextColor = theme.brightness == Brightness.dark
+            ? Colors.white.withOpacity(0.7)
+            : Colors.black.withOpacity(0.6);
+        final iconColor = _isVerified ? Colors.green : Colors.orange;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(
+              'Email Address',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: textColor,
               ),
             ),
+            backgroundColor: theme.appBarTheme.backgroundColor,
+            iconTheme: IconThemeData(color: textColor),
+          ),
+          backgroundColor: theme.scaffoldBackgroundColor,
+          body: _isLoading
+              ? Center(child: CircularProgressIndicator())
+              : Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.email,
+                        size: 80,
+                        color: iconColor,
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        'Email helps you access your account. It isn\'t visible to others.',
+                        style: TextStyle(
+                          fontSize: 12.0,
+                          color: secondaryTextColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 30),
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Email',
+                              style: TextStyle(
+                                fontSize: 12.0,
+                                color: secondaryTextColor,
+                              ),
+                            ),
+                            SizedBox(height: 5),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _userEmail,
+                                    style: TextStyle(
+                                      fontSize: 16.0,
+                                      fontWeight: FontWeight.bold,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Icon(
+                                  _isVerified ? Icons.check_circle : Icons.error,
+                                  color: iconColor,
+                                  size: 22,
+                                ),
+                                SizedBox(width: 5),
+                                Text(
+                                  _isVerified ? 'Verified' : 'Not Verified',
+                                  style: TextStyle(
+                                    fontSize: 14.0,
+                                    color: iconColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        );
+      },
     );
   }
 }

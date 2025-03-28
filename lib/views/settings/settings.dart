@@ -1,3 +1,4 @@
+import 'package:chatspot/views/settings/theme_service.dart';
 import 'package:flutter/material.dart';
 import '../auth/signin.dart'; // Import the SignInPage
 import 'account_settings.dart'; // Import the AccountSettingsPage
@@ -71,48 +72,40 @@ class SettingsPage extends StatelessWidget {
   }
 
   void _showThemeDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Select Theme'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                ListTile(
-                  title: Text('Light'),
-                  onTap: () {
-                    setTheme(ThemeData.light()); // Set light theme
-                    Navigator.of(context).pop();
-                  },
-                ),
-                ListTile(
-                  title: Text('Dark'),
-                  onTap: () {
-                    setTheme(ThemeData.dark()); // Set dark theme
-                    Navigator.of(context).pop();
-                  },
-                ),
-                ListTile(
-                  title: Text('System Default'),
-                  onTap: () {
-                    setTheme(ThemeData.fallback()); // Set system default theme
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            ),
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Select Theme'),
+        content: SingleChildScrollView(
+          child: ListBody(
+            children: <Widget>[
+              ListTile(
+                title: Text('Light'),
+                onTap: () {
+                  ThemeService.changeTheme(ThemeData.light());
+                  Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                title: Text('Dark'),
+                onTap: () {
+                  ThemeService.changeTheme(ThemeData.dark());
+                  Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                title: Text('System Default'),
+                onTap: () {
+                  ThemeService.changeTheme(ThemeData.fallback());
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
           ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 }
