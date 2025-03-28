@@ -65,6 +65,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
         _isSending = true;
       });
 
+      // ignore: unused_local_variable
       final loadingSnackBar = ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
