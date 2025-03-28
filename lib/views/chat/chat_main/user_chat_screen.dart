@@ -1,13 +1,13 @@
 import 'package:chatspot/views/chat/chat_main/date_formatters.dart';
 import 'package:chatspot/views/chat/chat_main/message_builders.dart';
 import 'package:chatspot/views/chat/chat_main/message_services.dart';
+import 'package:chatspot/views/chat/chat_main/image_handler.dart';
 import 'package:chatspot/views/settings/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:chatspot/services/cloudinary_service.dart';
 
 class UserChatScreen extends StatefulWidget {
   final String userId;
@@ -25,7 +25,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isEmojiVisible = false;
   bool _isSending = false;
-  late final ImagePicker _picker;
+  late ImageHandler _imageHandler;
 
   String get currentUserId => FirebaseAuth.instance.currentUser!.uid;
 
@@ -38,7 +38,20 @@ class _UserChatScreenState extends State<UserChatScreen> {
   @override
   void initState() {
     super.initState();
-    _picker = ImagePicker();
+    _imageHandler = ImageHandler(
+      context: context,
+      chatId: chatId,
+      currentUserId: currentUserId,
+      receiverId: widget.userId,
+      scrollToBottom: _scrollToBottom,
+      setLoadingState: (isLoading) {
+        if (mounted) {
+          setState(() {
+            _isSending = isLoading;
+          });
+        }
+      },
+    );
     _scrollController.addListener(_scrollListener);
     ThemeService.init();
   }
@@ -55,81 +68,6 @@ class _UserChatScreenState extends State<UserChatScreen> {
       setState(() {
         _isEmojiVisible = false;
       });
-    }
-  }
-
-  Future<void> _uploadAndSendImage(String imagePath,
-      {required ImageSource source}) async {
-    try {
-      setState(() {
-        _isSending = true;
-      });
-
-      // ignore: unused_local_variable
-      final loadingSnackBar = ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text('Uploading image...'),
-            ],
-          ),
-          duration: Duration(minutes: 1),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-
-      final cloudinaryService = CloudinaryService();
-      final imageUrl = source == ImageSource.camera
-          ? await cloudinaryService.uploadCameraPicture(imagePath)
-          : await cloudinaryService.uploadGalleryPicture(imagePath);
-
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-      await MessageServices.sendImageMessage(
-        chatId: chatId,
-        currentUserId: currentUserId,
-        receiverId: widget.userId,
-        imageUrl: imageUrl,
-        context: context,
-      );
-
-      _scrollToBottom();
-    } catch (e) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to upload image'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      debugPrint('Image upload error: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSending = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: source,
-        imageQuality: 85,
-      );
-      if (image != null) {
-        await _uploadAndSendImage(image.path, source: source);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to pick image: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -349,7 +287,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                                           .bodyLarge?.color)),
                                               onTap: () async {
                                                 Navigator.pop(context);
-                                                await _pickImage(
+                                                await _imageHandler.pickImage(
                                                     ImageSource.camera);
                                               },
                                             ),
@@ -362,7 +300,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                                           .bodyLarge?.color)),
                                               onTap: () async {
                                                 Navigator.pop(context);
-                                                await _pickImage(
+                                                await _imageHandler.pickImage(
                                                     ImageSource.gallery);
                                               },
                                             ),
