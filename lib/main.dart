@@ -5,8 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'views/auth/signin.dart';
-import 'forgot_password.dart';
-import 'firebase_options.dart';
+import 'views/auth/forgot_password.dart';
+import 'services/firebase_options.dart';
 
 const String base64SignerKey = 'yWflScrPyZIFtzEXL1RIEIah7Gq1hUwCgiobw4+TIFQ=';
 
