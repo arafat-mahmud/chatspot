@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../chat/chat_main/user_chat_screen.dart';
+import '../chat/chat_main/main_chat_screen.dart';
 
 class SearchPage extends StatefulWidget {
   @override
