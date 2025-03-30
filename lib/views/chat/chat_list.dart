@@ -20,20 +20,20 @@ class _ChatListState extends State<ChatList> {
   void initState() {
     super.initState();
     _currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    if (_currentUserId != null) {
-      _fetchChats();
-    }
+    _fetchChats();
   }
 
   void _fetchChats() {
-    if (_currentUserId == null) return;
+    if (_currentUserId == null) {
+      debugPrint("Current user ID is null");
+      return;
+    }
 
     setState(() {
       _chatStream = FirebaseFirestore.instance
           .collection('chats')
           .where('participants.$_currentUserId', isEqualTo: true)
-          .where('lastMessage', isNotEqualTo: '')
-          .orderBy('timestamp', descending: true)
+          .orderBy('lastMessageTime', descending: true) // Changed from timestamp to lastMessageTime
           .snapshots()
           .handleError((error) {
         debugPrint("Error fetching chats: $error");
@@ -74,8 +74,7 @@ class _ChatListState extends State<ChatList> {
         child: StreamBuilder<QuerySnapshot>(
           stream: _chatStream,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting && 
-                _chatStream != null) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
             
@@ -94,11 +93,15 @@ class _ChatListState extends State<ChatList> {
             // Precache user data for all chats
             for (final doc in chatDocs) {
               final chatData = doc.data() as Map<String, dynamic>;
+              final participants = chatData['participants'] ?? {};
               final users = chatData['users'] ?? {};
-              final otherUserId = users.keys.firstWhere(
+              
+              // Find other user ID
+              final otherUserId = participants.keys.firstWhere(
                 (key) => key != _currentUserId,
                 orElse: () => '',
               );
+              
               if (otherUserId.isNotEmpty) {
                 _precacheUserData(otherUserId);
               }
@@ -109,12 +112,13 @@ class _ChatListState extends State<ChatList> {
               itemCount: chatDocs.length,
               itemBuilder: (context, index) {
                 final chatData = chatDocs[index].data() as Map<String, dynamic>;
+                final participants = chatData['participants'] ?? {};
                 final users = chatData['users'] ?? {};
                 final lastMessage = chatData['lastMessage'] ?? '';
-                final timestamp = chatData['timestamp']?.toDate();
+                final timestamp = chatData['lastMessageTime']?.toDate();
 
                 // Get the other user's information
-                final otherUserId = users.keys.firstWhere(
+                final otherUserId = participants.keys.firstWhere(
                   (key) => key != _currentUserId,
                   orElse: () => '',
                 );
@@ -125,9 +129,6 @@ class _ChatListState extends State<ChatList> {
 
                 final name = users[otherUserId]?['name'] ?? 'Unknown';
                 
-                // ignore: unused_local_variable
-                final username = users[otherUserId]?['username'] ?? '';
-
                 return _ChatListItem(
                   userId: otherUserId,
                   name: name,
@@ -154,6 +155,7 @@ class _ChatListState extends State<ChatList> {
   }
 }
 
+// Rest of your _ChatListItem class remains the same
 class _ChatListItem extends StatelessWidget {
   final String userId;
   final String name;
