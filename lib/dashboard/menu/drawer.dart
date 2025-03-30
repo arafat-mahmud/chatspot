@@ -1,11 +1,11 @@
-import 'package:chatspot/dashboard/menu/settings/theme.dart';
+import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import 'settings/profile.dart';
-import 'settings/settings.dart';
+import 'components/my_profile.dart';
+import 'components/settings/settings.dart';
 // ignore: unused_import
 import '../../../main.dart';
 import '../../views/auth/signin.dart';

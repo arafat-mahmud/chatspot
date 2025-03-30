@@ -1,6 +1,6 @@
 import 'package:chatspot/views/chat/chat_main/date_formatters.dart';
 import 'package:chatspot/views/chat/chat_main/message_builders.dart';
-import 'package:chatspot/dashboard/menu/settings/theme.dart';
+import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:photo_view/photo_view.dart';

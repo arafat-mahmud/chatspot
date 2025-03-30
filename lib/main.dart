@@ -1,6 +1,6 @@
 import 'package:chatspot/dashboard/chats&calls_button.dart';
 import 'package:chatspot/views/chat/chat_main/main_chat_screen.dart';
-import 'package:chatspot/dashboard/menu/settings/theme.dart';
+import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';

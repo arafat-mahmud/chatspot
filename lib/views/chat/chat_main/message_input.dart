@@ -1,6 +1,6 @@
 // message_input.dart
 import 'package:chatspot/views/chat/chat_main/image_handler.dart';
-import 'package:chatspot/dashboard/menu/settings/theme.dart';
+import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:image_picker/image_picker.dart';
