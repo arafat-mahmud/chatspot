@@ -94,6 +94,7 @@ class _ChatListState extends State<ChatList> {
             for (final doc in chatDocs) {
               final chatData = doc.data() as Map<String, dynamic>;
               final participants = chatData['participants'] ?? {};
+              // ignore: unused_local_variable
               final users = chatData['users'] ?? {};
               
               // Find other user ID
