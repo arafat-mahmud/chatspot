@@ -2,7 +2,7 @@ import 'package:chatspot/views/chat/chat_main/chat_message_list.dart';
 import 'package:chatspot/views/chat/chat_main/message_services.dart';
 import 'package:chatspot/views/chat/chat_main/image_handler.dart';
 import 'package:chatspot/views/chat/chat_main/message_input.dart';
-import 'package:chatspot/views/settings/theme.dart';
+import 'package:chatspot/menu/settings/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 

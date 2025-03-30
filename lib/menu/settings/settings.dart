@@ -1,6 +1,6 @@
-import 'package:chatspot/views/settings/theme.dart';
+import 'package:chatspot/menu/settings/theme.dart';
 import 'package:flutter/material.dart';
-import '../auth/signin.dart'; // Import the SignInPage
+import '../../views/auth/signin.dart'; // Import the SignInPage
 import 'account_settings.dart'; // Import the AccountSettingsPage
 
 class SettingsPage extends StatelessWidget {
