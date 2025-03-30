@@ -3,46 +3,46 @@ import 'package:flutter/material.dart';
 
 class MessageServices {
   static Future<void> sendTextMessage({
-    required String chatId,
-    required String currentUserId,
-    required String receiverId,
-    required String message,
-    required BuildContext context,
-  }) async {
-    try {
-      DocumentReference chatRef =
-          FirebaseFirestore.instance.collection('chats').doc(chatId);
+  required String chatId,
+  required String currentUserId,
+  required String receiverId,
+  required String message,
+  required BuildContext context,
+}) async {
+  try {
+    DocumentReference chatRef =
+        FirebaseFirestore.instance.collection('chats').doc(chatId);
 
-      WriteBatch batch = FirebaseFirestore.instance.batch();
+    WriteBatch batch = FirebaseFirestore.instance.batch();
 
-      // Add new message
-      DocumentReference messageRef = chatRef.collection('messages').doc();
-      batch.set(messageRef, {
-        'text': message,
-        'timestamp': FieldValue.serverTimestamp(),
-        'senderId': currentUserId,
-        'receiverId': receiverId,
-        'isImage': false,
-      });
+    // Add new message
+    DocumentReference messageRef = chatRef.collection('messages').doc();
+    batch.set(messageRef, {
+      'text': message,
+      'timestamp': FieldValue.serverTimestamp(),
+      'senderId': currentUserId,
+      'receiverId': receiverId,
+      'isImage': false,
+    });
 
-      // Update chat document
-      batch.set(
-          chatRef,
-          {
-            'lastMessage': message,
-            'lastMessageTime': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true));
+    // Update chat document with message info only when actually sending a message
+    batch.set(
+        chatRef,
+        {
+          'lastMessage': message,
+          'lastMessageTime': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true));
 
-      await batch.commit();
-    } catch (e) {
-      print("Error sending message: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to send message")),
-      );
-      rethrow;
-    }
+    await batch.commit();
+  } catch (e) {
+    print("Error sending message: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Failed to send message")),
+    );
+    rethrow;
   }
+}
 
   static Future<void> sendImageMessage({
     required String chatId,

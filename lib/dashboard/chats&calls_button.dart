@@ -2,7 +2,7 @@ import 'package:chatspot/views/chat/chat_list.dart'; // Correct import for ChatL
 import 'package:chatspot/views/chat/call_screen.dart';
 import 'package:flutter/material.dart';
 import 'menu/drawer.dart';
-import 'views/search_bar/search_page.dart';
+import '../views/search_bar/search_page.dart';
 
 class HomePage extends StatefulWidget {
   @override

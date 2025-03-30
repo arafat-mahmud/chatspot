@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:chatspot/menu/settings/theme.dart'; // Import ThemeService
+import 'package:chatspot/dashboard/menu/settings/theme.dart'; // Import ThemeService
 
 class EmailVerificationPage extends StatefulWidget {
   @override

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'signup.dart'; // Import the SignUpPage
-import '../../chats&calls_button.dart'; // Correct the path to the actual location of HomePage
+import '../../dashboard/chats&calls_button.dart'; // Correct the path to the actual location of HomePage
 import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 
 

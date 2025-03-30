@@ -55,48 +55,46 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _startChat(String userId, String name) async {
-    String currentUserId = FirebaseAuth.instance.currentUser!.uid;
-    
-    // Get current user data
-    DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUserId)
-        .get();
+  String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+  
+  // Get current user data
+  DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(currentUserId)
+      .get();
 
-    List<String> ids = [currentUserId, userId];
-    ids.sort();
-    String chatId = ids.join("-");
+  List<String> ids = [currentUserId, userId];
+  ids.sort();
+  String chatId = ids.join("-");
 
-    DocumentReference chatRef = FirebaseFirestore.instance.collection('chats').doc(chatId);
+  DocumentReference chatRef = FirebaseFirestore.instance.collection('chats').doc(chatId);
 
-    await chatRef.set({
-      'participants': {
-        currentUserId: true,
-        userId: true,
+  await chatRef.set({
+    'participants': {
+      currentUserId: true,
+      userId: true,
+    },
+    'users': {
+      currentUserId: {
+        'username': currentUserDoc['username'],
+        'name': currentUserDoc['name'],
+        'userId': currentUserId,
       },
-      'lastMessage': '',
-      'timestamp': FieldValue.serverTimestamp(),
-      'users': {
-        currentUserId: {
-          'username': currentUserDoc['username'],
-          'name': currentUserDoc['name'],
-          'userId': currentUserId,
-        },
-        userId: {
-          'username': _results.firstWhere((user) => user['userId'] == userId)['username'],
-          'name': name,
-          'userId': userId,
-        },
+      userId: {
+        'username': _results.firstWhere((user) => user['userId'] == userId)['username'],
+        'name': name,
+        'userId': userId,
       },
-    }, SetOptions(merge: true));
+    },
+  }, SetOptions(merge: true));
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => UserChatScreen(userId: userId, userName: name),
-      ),
-    );
-  }
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => UserChatScreen(userId: userId, userName: name),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {

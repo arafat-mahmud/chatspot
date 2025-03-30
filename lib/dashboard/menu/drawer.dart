@@ -1,4 +1,4 @@
-import 'package:chatspot/menu/settings/theme.dart';
+import 'package:chatspot/dashboard/menu/settings/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,9 +7,9 @@ import 'package:image_picker/image_picker.dart';
 import 'settings/profile.dart';
 import 'settings/settings.dart';
 // ignore: unused_import
-import '../../main.dart';
-import '../views/auth/signin.dart';
-import '../services/cloudinary_service.dart';
+import '../../../main.dart';
+import '../../views/auth/signin.dart';
+import '../../services/cloudinary_service.dart';
 
 class CustomDrawer extends StatelessWidget {
   final CloudinaryService _cloudinaryService = CloudinaryService();
