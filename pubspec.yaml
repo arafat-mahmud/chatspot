@@ -47,7 +47,6 @@ dev_dependencies:
 flutter:
   assets:
     - assets/images/google_icon.png
-    - assets/images/profile.jpg
 
   fonts:
     - family: Chivo
