@@ -18,8 +18,8 @@ class _HomePageState extends State<HomePage> {
   ];
 
   static const List<String> _titles = <String>[
-    'Chatspot',
-    'Chatspot',
+    'Chatnook',
+    'Chatnook',
   ];
 
   void _onItemTapped(int index) {

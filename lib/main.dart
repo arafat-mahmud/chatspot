@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
           builder: (context, theme, child) {
             return MaterialApp(
               debugShowCheckedModeBanner: false,
-              title: 'Chatspot',
+              title: 'Chatnook',
               theme: theme,
               home: snapshot.hasData ? HomePage() : SignInPage(),
               onGenerateRoute: (settings) {
