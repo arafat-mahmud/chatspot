@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chatspot/views/chat/chat_main/date_formatters.dart';
 import 'package:chatspot/views/chat/chat_main/image_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -78,27 +79,10 @@ class ChatListItem extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       trailing: Text(
-        _formatMessageTime(timestamp),
+        DateFormatters.formatMessageTime(timestamp),
         style: const TextStyle(color: Colors.grey),
       ),
       onTap: onTap,
     );
-  }
-
-  String _formatMessageTime(DateTime? timestamp) {
-    if (timestamp == null) return '';
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = DateTime(now.year, now.month, now.day - 1);
-    final messageDate = DateTime(timestamp.year, timestamp.month, timestamp.day);
-
-    if (messageDate == today) {
-      return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
-    } else if (messageDate == yesterday) {
-      return 'Yesterday';
-    } else {
-      return '${timestamp.day}/${timestamp.month}';
-    }
   }
 }
