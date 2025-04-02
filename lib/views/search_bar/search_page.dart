@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../chat/chat_main/main_chat_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class SearchPage extends StatefulWidget {
   @override
@@ -40,7 +41,8 @@ class _SearchPageState extends State<SearchPage> {
               .map((doc) => {
                     "userId": doc.id,
                     "username": doc['username'],
-                    "name": doc['name']
+                    "name": doc['name'],
+                    "profilePictureUrl": doc['profilePictureUrl'] ?? '',
                   })
               .toList();
         });
@@ -55,46 +57,46 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _startChat(String userId, String name) async {
-  String currentUserId = FirebaseAuth.instance.currentUser!.uid;
-  
-  // Get current user data
-  DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
-      .collection('users')
-      .doc(currentUserId)
-      .get();
+    String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+    
+    // Get current user data
+    DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUserId)
+        .get();
 
-  List<String> ids = [currentUserId, userId];
-  ids.sort();
-  String chatId = ids.join("-");
+    List<String> ids = [currentUserId, userId];
+    ids.sort();
+    String chatId = ids.join("-");
 
-  DocumentReference chatRef = FirebaseFirestore.instance.collection('chats').doc(chatId);
+    DocumentReference chatRef = FirebaseFirestore.instance.collection('chats').doc(chatId);
 
-  await chatRef.set({
-    'participants': {
-      currentUserId: true,
-      userId: true,
-    },
-    'users': {
-      currentUserId: {
-        'username': currentUserDoc['username'],
-        'name': currentUserDoc['name'],
-        'userId': currentUserId,
+    await chatRef.set({
+      'participants': {
+        currentUserId: true,
+        userId: true,
       },
-      userId: {
-        'username': _results.firstWhere((user) => user['userId'] == userId)['username'],
-        'name': name,
-        'userId': userId,
+      'users': {
+        currentUserId: {
+          'username': currentUserDoc['username'],
+          'name': currentUserDoc['name'],
+          'userId': currentUserId,
+        },
+        userId: {
+          'username': _results.firstWhere((user) => user['userId'] == userId)['username'],
+          'name': name,
+          'userId': userId,
+        },
       },
-    },
-  }, SetOptions(merge: true));
+    }, SetOptions(merge: true));
 
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => UserChatScreen(userId: userId, userName: name),
-    ),
-  );
-}
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UserChatScreen(userId: userId, userName: name),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,11 +131,34 @@ class _SearchPageState extends State<SearchPage> {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(0),
         child: ListView.builder(
           itemCount: _results.length,
           itemBuilder: (context, index) {
             return ListTile(
+              leading: CircleAvatar(
+                radius: 24,
+                child: _results[index]["profilePictureUrl"]?.isNotEmpty == true
+                    ? CachedNetworkImage(
+                        imageUrl: _results[index]["profilePictureUrl"],
+                        imageBuilder: (context, imageProvider) => CircleAvatar(
+                          backgroundImage: imageProvider,
+                          radius: 24,
+                        ),
+                        placeholder: (context, url) => CircleAvatar(
+                          child: Text(_results[index]["name"][0].toUpperCase()),
+                          radius: 24,
+                        ),
+                        errorWidget: (context, url, error) => CircleAvatar(
+                          child: Text(_results[index]["name"][0].toUpperCase()),
+                          radius: 24,
+                        ),
+                      )
+                    : CircleAvatar(
+                        child: Text(_results[index]["name"][0].toUpperCase()),
+                        radius: 24,
+                      ),
+              ),
               title: Text(_results[index]["name"]),
               subtitle: Text(_results[index]["username"]),
               onTap: () {
