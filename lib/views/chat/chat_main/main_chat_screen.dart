@@ -141,7 +141,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
       builder: (context, theme, child) {
         return Scaffold(
           appBar: AppBar(
-            titleSpacing: 0,
+            titleSpacing: -3, // Adjust title spacing icon and profile
             title: Row(
               children: [
                 _profilePictureUrl?.isNotEmpty == true
