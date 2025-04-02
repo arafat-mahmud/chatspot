@@ -4,6 +4,7 @@ import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ChatMessageList extends StatelessWidget {
   final String currentUserId;
@@ -65,46 +66,102 @@ class ChatMessageList extends StatelessWidget {
                   }
                 }
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    if (showDateHeader)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Center(
-                          child: Text(
-                            DateFormatters.formatDate(timestamp),
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: theme.brightness == Brightness.dark
-                                  ? Colors.grey[400]
-                                  : Colors.grey[700],
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (isImage)
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => FullScreenImageView(
-                                imageUrl: msg['imageUrl'] ?? '',
-                                timestamp: timestamp,
-                                isUser: isUser,
+                return StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(msg['senderId'])
+                      .snapshots(),
+                  builder: (context, userSnapshot) {
+                    String profilePictureUrl = '';
+                    String senderName = '';
+
+                    if (userSnapshot.hasData) {
+                      final userData =
+                          userSnapshot.data!.data() as Map<String, dynamic>?;
+                      profilePictureUrl = userData?['profilePictureUrl'] ?? '';
+                      senderName = userData?['name'] ?? '';
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (showDateHeader)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8, bottom: 4),
+                            child: Center(
+                              child: Text(
+                                DateFormatters.formatDate(timestamp),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  // fontWeight: FontWeight.bold,
+                                  color: theme.brightness == Brightness.dark
+                                      ? Colors.grey[400]
+                                      : Colors.grey[700],
+                                ),
                               ),
                             ),
-                          );
-                        },
-                        child: MessageBuilders.buildImageMessage(
-                            context, msg['imageUrl'] ?? '', isUser, timestamp),
-                      )
-                    else
-                      MessageBuilders.buildTextMessage(context, messageText,
-                          isUser, timestamp, isShortMessage),
-                  ],
+                          ),
+                        Container(
+                          margin: EdgeInsets.only(
+                              bottom: 0, top: 0), // Reduced vertical spacing
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisAlignment: isUser
+                                ? MainAxisAlignment.end
+                                : MainAxisAlignment.start,
+                            children: [
+                              if (!isUser)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                      left: 8, right: 6.0, bottom: 0),
+                                  child: CircleAvatar(
+                                    radius: 16,
+                                    backgroundImage:
+                                        profilePictureUrl.isNotEmpty
+                                            ? CachedNetworkImageProvider(
+                                                profilePictureUrl)
+                                            : null,
+                                    child: profilePictureUrl.isEmpty
+                                        ? Text(senderName.isNotEmpty
+                                            ? senderName[0].toUpperCase()
+                                            : '')
+                                        : null,
+                                  ),
+                                ),
+                              if (isImage)
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            FullScreenImageView(
+                                          imageUrl: msg['imageUrl'] ?? '',
+                                          timestamp: timestamp,
+                                          isUser: isUser,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: MessageBuilders.buildImageMessage(
+                                      context,
+                                      msg['imageUrl'] ?? '',
+                                      isUser,
+                                      timestamp),
+                                )
+                              else
+                                MessageBuilders.buildTextMessage(
+                                    context,
+                                    messageText,
+                                    isUser,
+                                    timestamp,
+                                    isShortMessage),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 );
               },
             );
