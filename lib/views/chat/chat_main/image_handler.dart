@@ -1,4 +1,4 @@
-// image_handler.dart
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatspot/views/chat/chat_main/message_services.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,6 +22,37 @@ class ImageHandler {
   });
 
   final ImagePicker _picker = ImagePicker();
+
+  // New method to show full screen image
+  static void showFullScreenImage(BuildContext context, String imageUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.contain,
+                placeholder: (context, url) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+                errorWidget: (context, url, error) => const Icon(Icons.error),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<void> uploadAndSendImage(String imagePath,
       {required ImageSource source}) async {
