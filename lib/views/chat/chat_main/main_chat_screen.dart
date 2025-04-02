@@ -5,6 +5,8 @@ import 'package:chatspot/views/chat/chat_main/message_input.dart';
 import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class UserChatScreen extends StatefulWidget {
   final String userId;
@@ -22,6 +24,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isSending = false;
   late ImageHandler _imageHandler;
+  String? _profilePictureUrl;
 
   String get currentUserId => FirebaseAuth.instance.currentUser!.uid;
 
@@ -50,6 +53,27 @@ class _UserChatScreenState extends State<UserChatScreen> {
     );
     _scrollController.addListener(_scrollListener);
     ThemeService.init();
+    _loadProfilePicture();
+  }
+
+  Future<void> _loadProfilePicture() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .get();
+      
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        if (mounted) {
+          setState(() {
+            _profilePictureUrl = data['profilePictureUrl'] ?? '';
+          });
+        }
+      }
+    } catch (e) {
+      print("Error loading profile picture: $e");
+    }
   }
 
   @override
@@ -117,7 +141,24 @@ class _UserChatScreenState extends State<UserChatScreen> {
       builder: (context, theme, child) {
         return Scaffold(
           appBar: AppBar(
-            title: Text(widget.userName),
+            titleSpacing: 0,
+            title: Row(
+              children: [
+                _profilePictureUrl?.isNotEmpty == true
+                    ? CircleAvatar(
+                        radius: 16,
+                        backgroundImage: CachedNetworkImageProvider(_profilePictureUrl!),
+                      )
+                    : CircleAvatar(
+                        radius: 16,
+                        child: Text(widget.userName.isNotEmpty 
+                            ? widget.userName[0].toUpperCase() 
+                            : ''),
+                      ),
+                SizedBox(width: 12),
+                Text(widget.userName),
+              ],
+            ),
             actions: [
               IconButton(
                 icon: Icon(Icons.video_call),
