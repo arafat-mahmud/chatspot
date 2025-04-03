@@ -1,8 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chatspot/views/chat/chat_main/date_formatters.dart';
 import 'package:chatspot/views/chat/chat_main/message_services.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:chatspot/services/cloudinary_service.dart';
+import 'package:photo_view/photo_view.dart';
 
 class ImageHandler {
   final BuildContext context;
@@ -121,5 +123,124 @@ class ImageHandler {
         ),
       );
     }
+  }
+}
+
+class FullScreenImageView extends StatefulWidget {
+  final String imageUrl;
+  final DateTime? timestamp;
+  final bool isUser;
+
+  const FullScreenImageView({
+    Key? key,
+    required this.imageUrl,
+    this.timestamp,
+    required this.isUser,
+  }) : super(key: key);
+
+  @override
+  _FullScreenImageViewState createState() => _FullScreenImageViewState();
+}
+
+class _FullScreenImageViewState extends State<FullScreenImageView> {
+  late PhotoViewControllerBase controller;
+  double scale = 1.0;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = PhotoViewController()
+      ..outputStateStream.listen(onControllerUpdate);
+  }
+
+  void onControllerUpdate(PhotoViewControllerValue value) {
+    setState(() {
+      scale = value.scale ?? 1.0;
+    });
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: scale > 1.0 ? Colors.black54 : Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: GestureDetector(
+        onDoubleTap: () {
+          if (scale > 1.0) {
+            controller.scale = 1.0;
+            controller.position = Offset.zero;
+          } else {
+            controller.scale = 3.0;
+          }
+        },
+        child: Stack(
+          children: [
+            Center(
+              child: Hero(
+                tag: widget.imageUrl,
+                child: PhotoView(
+                  imageProvider: NetworkImage(widget.imageUrl),
+                  controller: controller,
+                  minScale: PhotoViewComputedScale.contained * 0.8,
+                  maxScale: PhotoViewComputedScale.covered * 4.0,
+                  initialScale: PhotoViewComputedScale.contained,
+                  backgroundDecoration: BoxDecoration(color: Colors.black),
+                  loadingBuilder: (context, event) => Center(
+                    child: Container(
+                      width: 30.0,
+                      height: 30.0,
+                      child: CircularProgressIndicator(
+                        value: event == null
+                            ? 0
+                            : event.cumulativeBytesLoaded /
+                                event.expectedTotalBytes!,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  errorBuilder: (context, error, stackTrace) => Center(
+                    child:
+                        Icon(Icons.broken_image, color: Colors.white, size: 50),
+                  ),
+                ),
+              ),
+            ),
+            if (widget.timestamp != null && scale <= 1.5)
+              Positioned(
+                bottom: 30,
+                right: widget.isUser ? 30 : null,
+                left: widget.isUser ? null : 30,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    DateFormatters.formatTimestamp(widget.timestamp),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
