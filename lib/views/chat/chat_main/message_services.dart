@@ -1,48 +1,51 @@
+// message_services.dart (updated)
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class MessageServices {
   static Future<void> sendTextMessage({
-  required String chatId,
-  required String currentUserId,
-  required String receiverId,
-  required String message,
-  required BuildContext context,
-}) async {
-  try {
-    DocumentReference chatRef =
-        FirebaseFirestore.instance.collection('chats').doc(chatId);
+    required String chatId,
+    required String currentUserId,
+    required String receiverId,
+    required String message,
+    required BuildContext context,
+  }) async {
+    try {
+      DocumentReference chatRef =
+          FirebaseFirestore.instance.collection('chats').doc(chatId);
 
-    WriteBatch batch = FirebaseFirestore.instance.batch();
+      WriteBatch batch = FirebaseFirestore.instance.batch();
 
-    // Add new message
-    DocumentReference messageRef = chatRef.collection('messages').doc();
-    batch.set(messageRef, {
-      'text': message,
-      'timestamp': FieldValue.serverTimestamp(),
-      'senderId': currentUserId,
-      'receiverId': receiverId,
-      'isImage': false,
-    });
+      // Add new message
+      DocumentReference messageRef = chatRef.collection('messages').doc();
+      batch.set(messageRef, {
+        'text': message,
+        'timestamp': FieldValue.serverTimestamp(),
+        'senderId': currentUserId,
+        'receiverId': receiverId,
+        'isImage': false,
+        'seenBy': {}, // Initialize empty seenBy map
+      });
 
-    // Update chat document with message info only when actually sending a message
-    batch.set(
-        chatRef,
-        {
-          'lastMessage': message,
-          'lastMessageTime': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true));
+      // Update chat document with message info only when actually sending a message
+      batch.set(
+          chatRef,
+          {
+            'lastMessage': message,
+            'lastMessageTime': FieldValue.serverTimestamp(),
+            'lastMessageSenderId': currentUserId,
+          },
+          SetOptions(merge: true));
 
-    await batch.commit();
-  } catch (e) {
-    print("Error sending message: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Failed to send message")),
-    );
-    rethrow;
+      await batch.commit();
+    } catch (e) {
+      print("Error sending message: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to send message")),
+      );
+      rethrow;
+    }
   }
-}
 
   static Future<void> sendImageMessage({
     required String chatId,
@@ -66,6 +69,7 @@ class MessageServices {
         'senderId': currentUserId,
         'receiverId': receiverId,
         'isImage': true,
+        'seenBy': {}, // Initialize empty seenBy map
       });
 
       // Update chat document
@@ -74,6 +78,7 @@ class MessageServices {
           {
             'lastMessage': '[Photo]',
             'lastMessageTime': FieldValue.serverTimestamp(),
+            'lastMessageSenderId': currentUserId,
           },
           SetOptions(merge: true));
 
@@ -83,6 +88,27 @@ class MessageServices {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to send image')),
       );
+      rethrow;
+    }
+  }
+
+  // Add this new method to mark message as seen
+  static Future<void> markMessageAsSeen({
+    required String chatId,
+    required String messageId,
+    required String userId,
+  }) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId)
+          .update({
+        'seenBy.$userId': true,
+      });
+    } catch (e) {
+      debugPrint('Error marking message as seen: $e');
       rethrow;
     }
   }
