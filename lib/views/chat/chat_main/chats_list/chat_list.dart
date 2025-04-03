@@ -78,13 +78,13 @@ class _ChatListState extends State<ChatList> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-            
+
             if (snapshot.hasError) {
               return Center(
                 child: Text("Error loading chats: ${snapshot.error}"),
               );
             }
-            
+
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
               return const Center(child: Text("No active chats yet."));
             }
@@ -97,13 +97,13 @@ class _ChatListState extends State<ChatList> {
               final participants = chatData['participants'] ?? {};
               // ignore: unused_local_variable
               final users = chatData['users'] ?? {};
-              
+
               // Find other user ID
               final otherUserId = participants.keys.firstWhere(
                 (key) => key != _currentUserId,
                 orElse: () => '',
               );
-              
+
               if (otherUserId.isNotEmpty) {
                 _precacheUserData(otherUserId);
               }
@@ -130,8 +130,9 @@ class _ChatListState extends State<ChatList> {
                 }
 
                 final name = users[otherUserId]?['name'] ?? 'Unknown';
-                
-                return ChatListItem( // Now using the separated widget
+
+                return ChatListItem(
+                  // Now using the separated widget
                   userId: otherUserId,
                   name: name,
                   lastMessage: lastMessage,
@@ -147,6 +148,11 @@ class _ChatListState extends State<ChatList> {
                       ),
                     ).then((_) => _refreshChats());
                   },
+                  currentUserId: _currentUserId!,
+                  chatId: chatDocs[index].id,
+                  isRead: chatData['lastMessageSenderId'] == _currentUserId ||
+                      (chatData['readBy'] != null &&
+                          chatData['readBy'][_currentUserId] == true),
                 );
               },
             );

@@ -4,12 +4,15 @@ import 'package:chatspot/views/chat/chat_main/image_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-class ChatListItem extends StatelessWidget {
+class ChatListItem extends StatefulWidget {
   final String userId;
   final String name;
   final String lastMessage;
   final DateTime? timestamp;
   final VoidCallback onTap;
+  final String currentUserId;
+  final String chatId;
+  final bool isRead;
 
   const ChatListItem({
     required this.userId,
@@ -17,7 +20,44 @@ class ChatListItem extends StatelessWidget {
     required this.lastMessage,
     this.timestamp,
     required this.onTap,
+    required this.currentUserId,
+    required this.chatId,
+    required this.isRead,
   });
+
+  @override
+  _ChatListItemState createState() => _ChatListItemState();
+}
+
+class _ChatListItemState extends State<ChatListItem> {
+  late bool _isRead;
+
+  @override
+  void initState() {
+    super.initState();
+    _isRead = widget.isRead;
+  }
+
+  Future<void> _markAsRead() async {
+    if (_isRead) return;
+    
+    try {
+      // Try to update Firestore if permissions allow
+      await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(widget.chatId)
+          .update({
+        'readBy.${widget.currentUserId}': true,
+      });
+    } catch (e) {
+      // If no permissions, we'll just update locally
+      debugPrint("Couldn't update read status in Firestore: $e");
+    }
+    
+    setState(() {
+      _isRead = true;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +65,7 @@ class ChatListItem extends StatelessWidget {
       leading: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
             .collection('users')
-            .doc(userId)
+            .doc(widget.userId)
             .snapshots(),
         builder: (context, snapshot) {
           final data = snapshot.data?.data() as Map<String, dynamic>?;
@@ -50,11 +90,11 @@ class ChatListItem extends StatelessWidget {
                     ),
                   ),
                   placeholder: (context, url) => CircleAvatar(
-                    child: Text(name[0].toUpperCase()),
+                    child: Text(widget.name[0].toUpperCase()),
                     radius: 24,
                   ),
                   errorWidget: (context, url, error) => CircleAvatar(
-                    child: Text(name[0].toUpperCase()),
+                    child: Text(widget.name[0].toUpperCase()),
                     radius: 24,
                   ),
                   fadeInDuration: const Duration(milliseconds: 200),
@@ -67,22 +107,36 @@ class ChatListItem extends StatelessWidget {
           }
 
           return CircleAvatar(
-            child: Text(name[0].toUpperCase()),
+            child: Text(widget.name[0].toUpperCase()),
             radius: 24,
           );
         },
       ),
-      title: Text(name),
+      title: Text(
+        widget.name,
+        style: TextStyle(
+          fontWeight: _isRead ? FontWeight.normal : FontWeight.bold,
+        ),
+      ),
       subtitle: Text(
-        lastMessage,
+        widget.lastMessage,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontWeight: _isRead ? FontWeight.normal : FontWeight.bold,
+        ),
       ),
       trailing: Text(
-        DateFormatters.formatMessageTime(timestamp),
-        style: const TextStyle(color: Colors.grey),
+        DateFormatters.formatMessageTime(widget.timestamp),
+        style: TextStyle(
+          color: _isRead ? Colors.grey : Colors.blue,
+          fontWeight: _isRead ? FontWeight.normal : FontWeight.bold,
+        ),
       ),
-      onTap: onTap,
+      onTap: () {
+        _markAsRead();
+        widget.onTap();
+      },
     );
   }
 }
