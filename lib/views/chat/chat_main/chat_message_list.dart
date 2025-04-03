@@ -4,7 +4,6 @@ import 'package:chatspot/views/chat/chat_main/message_services.dart';
 import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:photo_view/photo_view.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatspot/views/chat/chat_main/image_handler.dart';
 
