@@ -185,7 +185,7 @@ class ChatMessageList extends StatelessWidget {
                                   child: FutureBuilder<DocumentSnapshot>(
                                     future: FirebaseFirestore.instance
                                         .collection('users')
-                                        .doc(msg['receiverId'])
+                                        .doc(msg['senderId'])
                                         .get(),
                                     builder: (context, receiverSnapshot) {
                                       if (receiverSnapshot.hasData) {
