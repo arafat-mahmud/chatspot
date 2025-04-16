@@ -30,22 +30,28 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(56.0),
         child: AppBar(
-          backgroundColor: Color.fromARGB(255, 50, 157, 244),
+          backgroundColor: theme.primaryColor,
           title: SizedBox(
             width: double.infinity,
             child: Text(
               _titles[_selectedIndex],
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: theme.appBarTheme.titleTextStyle?.color ?? Colors.white,
+              ),
               textAlign: TextAlign.start,
             ),
           ),
           actions: <Widget>[
             IconButton(
               icon: Icon(Icons.search),
+              color: theme.appBarTheme.actionsIconTheme?.color ?? Colors.white,
               onPressed: () {
                 Navigator.push(
                   context,
@@ -59,9 +65,10 @@ class _HomePageState extends State<HomePage> {
             child: Divider(
               height: 1.0,
               thickness: 1.0,
-              color: Colors.grey[300],
+              color: theme.dividerColor,
             ),
           ),
+          iconTheme: theme.appBarTheme.iconTheme ?? IconThemeData(color: Colors.white),
         ),
       ),
       drawer: CustomDrawer(),
@@ -78,8 +85,12 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color.fromARGB(255, 21, 138, 234),
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: theme.bottomNavigationBarTheme.selectedItemColor ?? 
+            const Color.fromARGB(255, 21, 138, 234),
+        unselectedItemColor: theme.bottomNavigationBarTheme.unselectedItemColor ?? 
+            Colors.grey,
+        backgroundColor: theme.bottomNavigationBarTheme.backgroundColor ?? 
+            theme.scaffoldBackgroundColor,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
       ),
