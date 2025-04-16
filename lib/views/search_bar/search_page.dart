@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../chat/chat_main/main_chat_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'search_history.dart';
 
 class SearchPage extends StatefulWidget {
   @override
@@ -12,12 +13,16 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final SearchHistory _searchHistory = SearchHistory();
   List<Map<String, dynamic>> _results = [];
+  List<Map<String, dynamic>> _historyResults = [];
+  bool _showHistory = true;
 
   @override
   void initState() {
     super.initState();
     _focusNode.requestFocus();
+    _loadSearchHistory();
   }
 
   @override
@@ -26,8 +31,18 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
+  Future<void> _loadSearchHistory() async {
+    final history = await _searchHistory.getSearchHistory();
+    setState(() {
+      _historyResults = history;
+    });
+  }
+
   void _onSearchChanged(String query) async {
     if (query.isNotEmpty) {
+      setState(() {
+        _showHistory = false;
+      });
       try {
         final usernameQuery = query.startsWith('@') ? query : '@$query';
         final nameQuery = query;
@@ -71,11 +86,15 @@ class _SearchPageState extends State<SearchPage> {
     } else {
       setState(() {
         _results = [];
+        _showHistory = true;
       });
     }
   }
 
   void _startChat(String userId, String name) async {
+    // Add to search history
+    await _searchHistory.addToSearchHistory(userId);
+    
     String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
     // Get current user data
@@ -119,6 +138,11 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
+  Future<void> _removeFromHistory(String userId) async {
+    await _searchHistory.removeFromSearchHistory(userId);
+    await _loadSearchHistory();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -153,41 +177,48 @@ class _SearchPageState extends State<SearchPage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(0),
-        child: ListView.builder(
-          itemCount: _results.length,
-          itemBuilder: (context, index) {
-            return ListTile(
-              leading: CircleAvatar(
-                radius: 24,
-                child: _results[index]["profilePictureUrl"]?.isNotEmpty == true
-                    ? CachedNetworkImage(
-                        imageUrl: _results[index]["profilePictureUrl"],
-                        imageBuilder: (context, imageProvider) => CircleAvatar(
-                          backgroundImage: imageProvider,
-                          radius: 24,
-                        ),
-                        placeholder: (context, url) => CircleAvatar(
-                          child: Text(_results[index]["name"][0].toUpperCase()),
-                          radius: 24,
-                        ),
-                        errorWidget: (context, url, error) => CircleAvatar(
-                          child: Text(_results[index]["name"][0].toUpperCase()),
-                          radius: 24,
-                        ),
-                      )
-                    : CircleAvatar(
-                        child: Text(_results[index]["name"][0].toUpperCase()),
-                        radius: 24,
-                      ),
+        child: _showHistory
+            ? _searchHistory.buildSearchHistoryList(
+                history: _historyResults,
+                onUserTap: _startChat,
+                onRemove: _removeFromHistory,
+                context: context,
+              )
+            : ListView.builder(
+                itemCount: _results.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    leading: CircleAvatar(
+                      radius: 24,
+                      child: _results[index]["profilePictureUrl"]?.isNotEmpty == true
+                          ? CachedNetworkImage(
+                              imageUrl: _results[index]["profilePictureUrl"],
+                              imageBuilder: (context, imageProvider) => CircleAvatar(
+                                backgroundImage: imageProvider,
+                                radius: 24,
+                              ),
+                              placeholder: (context, url) => CircleAvatar(
+                                child: Text(_results[index]["name"][0].toUpperCase()),
+                                radius: 24,
+                              ),
+                              errorWidget: (context, url, error) => CircleAvatar(
+                                child: Text(_results[index]["name"][0].toUpperCase()),
+                                radius: 24,
+                              ),
+                            )
+                          : CircleAvatar(
+                              child: Text(_results[index]["name"][0].toUpperCase()),
+                              radius: 24,
+                            ),
+                    ),
+                    title: Text(_results[index]["name"]),
+                    subtitle: Text(_results[index]["username"]),
+                    onTap: () {
+                      _startChat(_results[index]["userId"], _results[index]["name"]);
+                    },
+                  );
+                },
               ),
-              title: Text(_results[index]["name"]),
-              subtitle: Text(_results[index]["username"]),
-              onTap: () {
-                _startChat(_results[index]["userId"], _results[index]["name"]);
-              },
-            );
-          },
-        ),
       ),
     );
   }
