@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:intl/intl.dart';
 import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
-import 'package:flutter/services.dart'; // Added for Clipboard functionality
+import 'package:flutter/services.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final String userId;
