@@ -10,6 +10,8 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   late TextEditingController _nameController;
   final TextEditingController _usernameController = TextEditingController();
+  String _dob = ''; // Add this for date of birth
+  String _gender = ''; // Add this for gender
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isLoading = true;
@@ -36,9 +38,15 @@ class _ProfilePageState extends State<ProfilePage> {
           String savedUsername = userDoc['username'] ?? '';
           _originalUsername = savedUsername;
           _usernameController.text = savedUsername.replaceFirst('@', '');
+
+          // Add these lines to fetch dob and gender
+          _dob = userDoc['dob'] ?? 'Not specified';
+          _gender = userDoc['gender'] ?? 'Not specified';
         } else {
           _nameController.text = '';
           _usernameController.text = '';
+          _dob = 'Not specified';
+          _gender = 'Not specified';
         }
         setState(() {
           _isLoading = false;
@@ -119,6 +127,41 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             SizedBox(height: 16),
+            // Add these new fields for Date of Birth and Gender
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  Text('Date of Birth: '),
+                  Text(
+                    _dob,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  Text('Gender: '),
+                  Text(
+                    _gender,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 16),
             ElevatedButton(
               onPressed: () async {
                 final user = FirebaseAuth.instance.currentUser;
@@ -128,9 +171,11 @@ class _ProfilePageState extends State<ProfilePage> {
                     String name = _nameController.text.trim();
 
                     // Check if username is modified and available
-                    String username = _usernameController.text.trim().toLowerCase();
+                    String username =
+                        _usernameController.text.trim().toLowerCase();
                     String usernameWithAt = '@$username';
-                    bool isUsernameModified = usernameWithAt != _originalUsername;
+                    bool isUsernameModified =
+                        usernameWithAt != _originalUsername;
 
                     if (isUsernameModified) {
                       if (!_isUsernameAvailable) {
@@ -147,7 +192,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     // Update user data
                     await _firestore.collection('users').doc(user.uid).set({
                       'name': name,
-                      'username': isUsernameModified ? usernameWithAt : _originalUsername,
+                      'username': isUsernameModified
+                          ? usernameWithAt
+                          : _originalUsername,
                     }, SetOptions(merge: true));
 
                     print("User data updated successfully!");
