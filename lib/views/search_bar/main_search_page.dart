@@ -17,12 +17,40 @@ class _SearchPageState extends State<SearchPage> {
   List<Map<String, dynamic>> _results = [];
   List<Map<String, dynamic>> _historyResults = [];
   bool _showHistory = true;
+  bool _hasUsername = false;
+  bool _isCheckingUsername = true;
 
   @override
   void initState() {
     super.initState();
     _focusNode.requestFocus();
     _loadSearchHistory();
+    _checkUsername();
+  }
+
+  Future<void> _checkUsername() async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+
+        setState(() {
+          _hasUsername = userDoc.exists &&
+              userDoc.data()?.containsKey('username') == true &&
+              userDoc['username'] != null &&
+              userDoc['username'].toString().isNotEmpty;
+          _isCheckingUsername = false;
+        });
+      }
+    } catch (e) {
+      print("Error checking username: $e");
+      setState(() {
+        _isCheckingUsername = false;
+      });
+    }
   }
 
   @override
@@ -39,16 +67,29 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _onSearchChanged(String query) async {
+    if (_isCheckingUsername) {
+      return; // Wait until username check is complete
+    }
+
     if (query.isNotEmpty) {
+      if (!_hasUsername) {
+        _showUsernameAlert();
+        setState(() {
+          _results = [];
+          _showHistory = true;
+        });
+        return;
+      }
+
       setState(() {
         _showHistory = false;
       });
+
       try {
         final isUsernameSearch = query.startsWith('@');
         final usernameQuery = isUsernameSearch ? query : '@$query';
         final nameQuery = query.toLowerCase();
 
-        // If searching with @username, only do exact username search
         if (isUsernameSearch) {
           final usernameDocs = await FirebaseFirestore.instance
               .collection('users')
@@ -65,26 +106,20 @@ class _SearchPageState extends State<SearchPage> {
                     })
                 .toList();
           });
-        }
-        // Otherwise, search both username and name
-        else {
-          // Search for exact username match
+        } else {
           final usernameDocs = await FirebaseFirestore.instance
               .collection('users')
               .where('username', isEqualTo: usernameQuery)
               .get();
 
-          // Search for name match (case insensitive)
           final nameDocs =
               await FirebaseFirestore.instance.collection('users').get();
 
-          // Filter name matches locally for case insensitivity
           final filteredNameDocs = nameDocs.docs.where((doc) {
             final name = doc['name']?.toString().toLowerCase() ?? '';
             return name.contains(nameQuery);
           }).toList();
 
-          // Combine results and remove duplicates
           final allDocs = [...usernameDocs.docs, ...filteredNameDocs];
           final uniqueDocs = allDocs
               .fold<Map<String, DocumentSnapshot>>({}, (map, doc) {
@@ -116,14 +151,32 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  void _startChat(String userId, String name) async {
-    // Add to search history - this will now properly save in Firestore
-    await _searchHistory.addToSearchHistory(userId);
+  void _showUsernameAlert() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Username Required!"),
+        content: Text(
+            "Please set your username in your profile before searching for other users"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
 
+  void _startChat(String userId, String name) async {
+    if (!_hasUsername) {
+      _showUsernameAlert();
+      return;
+    }
+
+    await _searchHistory.addToSearchHistory(userId);
     String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
-    // Rest of your existing _startChat code...
-    // Get current user data
     DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(currentUserId)
@@ -171,7 +224,7 @@ class _SearchPageState extends State<SearchPage> {
 
   Future<void> _clearAllHistory() async {
     await _searchHistory.clearSearchHistory();
-    await _loadSearchHistory(); // Reload the history after clearing
+    await _loadSearchHistory();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Search history cleared')),
     );
@@ -209,59 +262,63 @@ class _SearchPageState extends State<SearchPage> {
           ],
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(0),
-        child: _showHistory
-            ? _searchHistory.buildSearchHistoryList(
-                history: _historyResults,
-                onUserTap: _startChat,
-                onRemove: _removeFromHistory,
-                onClearAll: _clearAllHistory, // Pass the clear function
-                context: context,
-              )
-            : ListView.builder(
-                itemCount: _results.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    leading: CircleAvatar(
-                      radius: 24,
-                      child: _results[index]["profilePictureUrl"]?.isNotEmpty ==
-                              true
-                          ? CachedNetworkImage(
-                              imageUrl: _results[index]["profilePictureUrl"],
-                              imageBuilder: (context, imageProvider) =>
-                                  CircleAvatar(
-                                backgroundImage: imageProvider,
-                                radius: 24,
-                              ),
-                              placeholder: (context, url) => CircleAvatar(
-                                child: Text(
-                                    _results[index]["name"][0].toUpperCase()),
-                                radius: 24,
-                              ),
-                              errorWidget: (context, url, error) =>
-                                  CircleAvatar(
-                                child: Text(
-                                    _results[index]["name"][0].toUpperCase()),
-                                radius: 24,
-                              ),
-                            )
-                          : CircleAvatar(
-                              child: Text(
-                                  _results[index]["name"][0].toUpperCase()),
-                              radius: 24,
-                            ),
+      body: _isCheckingUsername
+          ? Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(0),
+              child: _showHistory
+                  ? _searchHistory.buildSearchHistoryList(
+                      history: _historyResults,
+                      onUserTap: _startChat,
+                      onRemove: _removeFromHistory,
+                      onClearAll: _clearAllHistory,
+                      context: context,
+                    )
+                  : ListView.builder(
+                      itemCount: _results.length,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          leading: CircleAvatar(
+                            radius: 24,
+                            child: _results[index]["profilePictureUrl"]
+                                        ?.isNotEmpty ==
+                                    true
+                                ? CachedNetworkImage(
+                                    imageUrl: _results[index]
+                                        ["profilePictureUrl"],
+                                    imageBuilder: (context, imageProvider) =>
+                                        CircleAvatar(
+                                      backgroundImage: imageProvider,
+                                      radius: 24,
+                                    ),
+                                    placeholder: (context, url) => CircleAvatar(
+                                      child: Text(_results[index]["name"][0]
+                                          .toUpperCase()),
+                                      radius: 24,
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        CircleAvatar(
+                                      child: Text(_results[index]["name"][0]
+                                          .toUpperCase()),
+                                      radius: 24,
+                                    ),
+                                  )
+                                : CircleAvatar(
+                                    child: Text(_results[index]["name"][0]
+                                        .toUpperCase()),
+                                    radius: 24,
+                                  ),
+                          ),
+                          title: Text(_results[index]["name"]),
+                          subtitle: Text(_results[index]["username"]),
+                          onTap: () {
+                            _startChat(_results[index]["userId"],
+                                _results[index]["name"]);
+                          },
+                        );
+                      },
                     ),
-                    title: Text(_results[index]["name"]),
-                    subtitle: Text(_results[index]["username"]),
-                    onTap: () {
-                      _startChat(
-                          _results[index]["userId"], _results[index]["name"]);
-                    },
-                  );
-                },
-              ),
-      ),
+            ),
     );
   }
 }
