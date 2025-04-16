@@ -38,48 +38,74 @@ class _SearchPageState extends State<SearchPage> {
     });
   }
 
+//
   void _onSearchChanged(String query) async {
     if (query.isNotEmpty) {
       setState(() {
         _showHistory = false;
       });
       try {
-        final usernameQuery = query.startsWith('@') ? query : '@$query';
-        final nameQuery = query;
+        final isUsernameSearch = query.startsWith('@');
+        final usernameQuery = isUsernameSearch ? query : '@$query';
+        final nameQuery = query.toLowerCase();
 
-        // Search for username match
-        final usernameDocs = await FirebaseFirestore.instance
-            .collection('users')
-            .where('username', isEqualTo: usernameQuery)
-            .get();
+        // If searching with @username, only do exact username search
+        if (isUsernameSearch) {
+          final usernameDocs = await FirebaseFirestore.instance
+              .collection('users')
+              .where('username', isEqualTo: usernameQuery)
+              .get();
 
-        // Search for name match (case insensitive)
-        final nameDocs = await FirebaseFirestore.instance
-            .collection('users')
-            .where('name', isGreaterThanOrEqualTo: nameQuery)
-            .where('name', isLessThan: nameQuery + 'z')
-            .get();
+          setState(() {
+            _results = usernameDocs.docs
+                .map((doc) => {
+                      "userId": doc.id,
+                      "username": doc['username'],
+                      "name": doc['name'],
+                      "profilePictureUrl": doc['profilePictureUrl'] ?? '',
+                    })
+                .toList();
+          });
+        }
+        // Otherwise, search both username and name
+        else {
+          // Search for exact username match
+          final usernameDocs = await FirebaseFirestore.instance
+              .collection('users')
+              .where('username', isEqualTo: usernameQuery)
+              .get();
 
-        // Combine results and remove duplicates
-        final allDocs = [...usernameDocs.docs, ...nameDocs.docs];
-        final uniqueDocs = allDocs
-            .fold<Map<String, DocumentSnapshot>>({}, (map, doc) {
-              map[doc.id] = doc;
-              return map;
-            })
-            .values
-            .toList();
+          // Search for name match (case insensitive)
+          final nameDocs =
+              await FirebaseFirestore.instance.collection('users').get();
 
-        setState(() {
-          _results = uniqueDocs
-              .map((doc) => {
-                    "userId": doc.id,
-                    "username": doc['username'],
-                    "name": doc['name'],
-                    "profilePictureUrl": doc['profilePictureUrl'] ?? '',
-                  })
+          // Filter name matches locally for case insensitivity
+          final filteredNameDocs = nameDocs.docs.where((doc) {
+            final name = doc['name']?.toString().toLowerCase() ?? '';
+            return name.contains(nameQuery);
+          }).toList();
+
+          // Combine results and remove duplicates
+          final allDocs = [...usernameDocs.docs, ...filteredNameDocs];
+          final uniqueDocs = allDocs
+              .fold<Map<String, DocumentSnapshot>>({}, (map, doc) {
+                map[doc.id] = doc;
+                return map;
+              })
+              .values
               .toList();
-        });
+
+          setState(() {
+            _results = uniqueDocs
+                .map((doc) => {
+                      "userId": doc.id,
+                      "username": doc['username'],
+                      "name": doc['name'],
+                      "profilePictureUrl": doc['profilePictureUrl'] ?? '',
+                    })
+                .toList();
+          });
+        }
       } catch (e) {
         print("Error searching for user: $e");
       }
@@ -94,7 +120,7 @@ class _SearchPageState extends State<SearchPage> {
   void _startChat(String userId, String name) async {
     // Add to search history
     await _searchHistory.addToSearchHistory(userId);
-    
+
     String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
     // Get current user data
@@ -190,31 +216,38 @@ class _SearchPageState extends State<SearchPage> {
                   return ListTile(
                     leading: CircleAvatar(
                       radius: 24,
-                      child: _results[index]["profilePictureUrl"]?.isNotEmpty == true
+                      child: _results[index]["profilePictureUrl"]?.isNotEmpty ==
+                              true
                           ? CachedNetworkImage(
                               imageUrl: _results[index]["profilePictureUrl"],
-                              imageBuilder: (context, imageProvider) => CircleAvatar(
+                              imageBuilder: (context, imageProvider) =>
+                                  CircleAvatar(
                                 backgroundImage: imageProvider,
                                 radius: 24,
                               ),
                               placeholder: (context, url) => CircleAvatar(
-                                child: Text(_results[index]["name"][0].toUpperCase()),
+                                child: Text(
+                                    _results[index]["name"][0].toUpperCase()),
                                 radius: 24,
                               ),
-                              errorWidget: (context, url, error) => CircleAvatar(
-                                child: Text(_results[index]["name"][0].toUpperCase()),
+                              errorWidget: (context, url, error) =>
+                                  CircleAvatar(
+                                child: Text(
+                                    _results[index]["name"][0].toUpperCase()),
                                 radius: 24,
                               ),
                             )
                           : CircleAvatar(
-                              child: Text(_results[index]["name"][0].toUpperCase()),
+                              child: Text(
+                                  _results[index]["name"][0].toUpperCase()),
                               radius: 24,
                             ),
                     ),
                     title: Text(_results[index]["name"]),
                     subtitle: Text(_results[index]["username"]),
                     onTap: () {
-                      _startChat(_results[index]["userId"], _results[index]["name"]);
+                      _startChat(
+                          _results[index]["userId"], _results[index]["name"]);
                     },
                   );
                 },
