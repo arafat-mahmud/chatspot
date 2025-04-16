@@ -3,6 +3,7 @@ import 'package:chatspot/views/chat/chat_main/message_services.dart';
 import 'package:chatspot/views/chat/chat_main/image_handler.dart';
 import 'package:chatspot/views/chat/chat_main/message_input.dart';
 import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
+import 'package:chatspot/views/chat/chat_main/user_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -134,6 +135,15 @@ class _UserChatScreenState extends State<UserChatScreen> {
     });
   }
 
+  void _openUserProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UserProfileScreen(userId: widget.userId),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeData>(
@@ -141,23 +151,26 @@ class _UserChatScreenState extends State<UserChatScreen> {
       builder: (context, theme, child) {
         return Scaffold(
           appBar: AppBar(
-            titleSpacing: -3, // Adjust title spacing icon and profile
-            title: Row(
-              children: [
-                _profilePictureUrl?.isNotEmpty == true
-                    ? CircleAvatar(
-                        radius: 16,
-                        backgroundImage: CachedNetworkImageProvider(_profilePictureUrl!),
-                      )
-                    : CircleAvatar(
-                        radius: 16,
-                        child: Text(widget.userName.isNotEmpty 
-                            ? widget.userName[0].toUpperCase() 
-                            : ''),
-                      ),
-                SizedBox(width: 12),
-                Text(widget.userName),
-              ],
+            titleSpacing: -3,
+            title: GestureDetector(
+              onTap: _openUserProfile,
+              child: Row(
+                children: [
+                  _profilePictureUrl?.isNotEmpty == true
+                      ? CircleAvatar(
+                          radius: 16,
+                          backgroundImage: CachedNetworkImageProvider(_profilePictureUrl!),
+                        )
+                      : CircleAvatar(
+                          radius: 16,
+                          child: Text(widget.userName.isNotEmpty 
+                              ? widget.userName[0].toUpperCase() 
+                              : ''),
+                        ),
+                  SizedBox(width: 12),
+                  Text(widget.userName),
+                ],
+              ),
             ),
             actions: [
               IconButton(
