@@ -38,7 +38,6 @@ class _SearchPageState extends State<SearchPage> {
     });
   }
 
-//
   void _onSearchChanged(String query) async {
     if (query.isNotEmpty) {
       setState(() {
@@ -118,11 +117,12 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _startChat(String userId, String name) async {
-    // Add to search history
+    // Add to search history - this will now properly save in Firestore
     await _searchHistory.addToSearchHistory(userId);
 
     String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
+    // Rest of your existing _startChat code...
     // Get current user data
     DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
         .collection('users')
@@ -169,6 +169,14 @@ class _SearchPageState extends State<SearchPage> {
     await _loadSearchHistory();
   }
 
+  Future<void> _clearAllHistory() async {
+    await _searchHistory.clearSearchHistory();
+    await _loadSearchHistory(); // Reload the history after clearing
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Search history cleared')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -208,6 +216,7 @@ class _SearchPageState extends State<SearchPage> {
                 history: _historyResults,
                 onUserTap: _startChat,
                 onRemove: _removeFromHistory,
+                onClearAll: _clearAllHistory, // Pass the clear function
                 context: context,
               )
             : ListView.builder(

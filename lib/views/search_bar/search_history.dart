@@ -14,9 +14,22 @@ class SearchHistory {
       final currentUserId = _auth.currentUser!.uid;
       final userRef = _firestore.collection('users').doc(currentUserId);
 
-      await userRef.update({
-        'searchHistory': FieldValue.arrayUnion([searchedUserId])
-      });
+      // Get current history
+      final userDoc = await userRef.get();
+      List<dynamic> currentHistory = userDoc.data()?['searchHistory'] ?? [];
+
+      // Remove if already exists (to avoid duplicates)
+      currentHistory.remove(searchedUserId);
+
+      // Add to beginning of list (most recent first)
+      currentHistory.insert(0, searchedUserId);
+
+      // Keep only the last 20 searches
+      if (currentHistory.length > 20) {
+        currentHistory = currentHistory.sublist(0, 20);
+      }
+
+      await userRef.update({'searchHistory': currentHistory});
     } catch (e) {
       print("Error adding to search history: $e");
     }
@@ -32,12 +45,10 @@ class SearchHistory {
       if (userDoc.exists &&
           userDoc.data()?.containsKey('searchHistory') == true) {
         final List<dynamic> historyIds = userDoc['searchHistory'];
-        // Remove duplicates while preserving order
-        final uniqueIds = historyIds.toSet().toList();
 
         // Fetch user details for each history item
         List<Map<String, dynamic>> historyUsers = [];
-        for (var userId in uniqueIds) {
+        for (var userId in historyIds) {
           final userDoc =
               await _firestore.collection('users').doc(userId).get();
           if (userDoc.exists) {
@@ -63,7 +74,7 @@ class SearchHistory {
     try {
       final currentUserId = _auth.currentUser!.uid;
       await _firestore.collection('users').doc(currentUserId).update({
-        'searchHistory': FieldValue.delete(),
+        'searchHistory': [],
       });
     } catch (e) {
       print("Error clearing search history: $e");
@@ -87,6 +98,7 @@ class SearchHistory {
     required List<Map<String, dynamic>> history,
     required Function(String, String) onUserTap,
     required Function(String) onRemove,
+    required Function() onClearAll,
     required BuildContext context,
   }) {
     return Column(
@@ -105,12 +117,7 @@ class SearchHistory {
               ),
               if (history.isNotEmpty)
                 TextButton(
-                  onPressed: () async {
-                    await clearSearchHistory();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Search history cleared')),
-                    );
-                  },
+                  onPressed: onClearAll, // Use the passed function
                   child: Text('Clear all'),
                 ),
             ],
