@@ -33,6 +33,7 @@ dependencies:
   cloudinary_public: ^0.23.1
 
   cached_network_image: ^3.4.1
+  intl: ^0.20.2
 
 
 

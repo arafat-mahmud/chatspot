@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:chatspot/dashboard/menu/components/settings/theme.dart'; // Import ThemeService
+import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
+import 'package:intl/intl.dart'; // Add this import for date formatting
 
 class EmailVerificationPage extends StatefulWidget {
   @override
@@ -12,6 +13,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
   String _userEmail = '';
   bool _isLoading = true;
   bool _isVerified = false;
+  String _joinedDate = ''; // Add this variable to store the joined date
 
   @override
   void initState() {
@@ -32,9 +34,16 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
             .doc(user.uid)
             .get();
 
+        // Get the creation date from Firebase Auth or Firestore
+        DateTime joinedDate = user.metadata.creationTime ?? DateTime.now();
+        
+        // If you store a custom join date in Firestore, you could use that instead:
+        // DateTime joinedDate = userDoc['createdAt']?.toDate() ?? user.metadata.creationTime ?? DateTime.now();
+
         setState(() {
           _userEmail =
               userDoc.exists ? (userDoc['email'] ?? '') : (user.email ?? '');
+          _joinedDate = DateFormat('MMMM d, y').format(joinedDate); // Format the date
           _isLoading = false;
         });
       } else {
@@ -130,6 +139,14 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                                   ),
                                 ),
                               ],
+                            ),
+                            SizedBox(height: 10),
+                            Text(
+                              'Joined on $_joinedDate', // Display the joined date
+                              style: TextStyle(
+                                fontSize: 12.0,
+                                color: secondaryTextColor,
+                              ),
                             ),
                             SizedBox(height: 10),
                             Row(
