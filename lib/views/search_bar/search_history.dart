@@ -13,7 +13,7 @@ class SearchHistory {
     try {
       final currentUserId = _auth.currentUser!.uid;
       final userRef = _firestore.collection('users').doc(currentUserId);
-      
+
       await userRef.update({
         'searchHistory': FieldValue.arrayUnion([searchedUserId])
       });
@@ -26,17 +26,20 @@ class SearchHistory {
   Future<List<Map<String, dynamic>>> getSearchHistory() async {
     try {
       final currentUserId = _auth.currentUser!.uid;
-      final userDoc = await _firestore.collection('users').doc(currentUserId).get();
-      
-      if (userDoc.exists && userDoc.data()?.containsKey('searchHistory') == true) {
+      final userDoc =
+          await _firestore.collection('users').doc(currentUserId).get();
+
+      if (userDoc.exists &&
+          userDoc.data()?.containsKey('searchHistory') == true) {
         final List<dynamic> historyIds = userDoc['searchHistory'];
         // Remove duplicates while preserving order
         final uniqueIds = historyIds.toSet().toList();
-        
+
         // Fetch user details for each history item
         List<Map<String, dynamic>> historyUsers = [];
         for (var userId in uniqueIds) {
-          final userDoc = await _firestore.collection('users').doc(userId).get();
+          final userDoc =
+              await _firestore.collection('users').doc(userId).get();
           if (userDoc.exists) {
             historyUsers.add({
               "userId": userDoc.id,
