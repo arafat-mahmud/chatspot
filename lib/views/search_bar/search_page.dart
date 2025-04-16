@@ -29,15 +29,34 @@ class _SearchPageState extends State<SearchPage> {
   void _onSearchChanged(String query) async {
     if (query.isNotEmpty) {
       try {
-        final usernameWithAt = query.startsWith('@') ? query : '@$query';
+        final usernameQuery = query.startsWith('@') ? query : '@$query';
+        final nameQuery = query;
 
-        final userDocs = await FirebaseFirestore.instance
+        // Search for username match
+        final usernameDocs = await FirebaseFirestore.instance
             .collection('users')
-            .where('username', isEqualTo: usernameWithAt)
+            .where('username', isEqualTo: usernameQuery)
             .get();
 
+        // Search for name match (case insensitive)
+        final nameDocs = await FirebaseFirestore.instance
+            .collection('users')
+            .where('name', isGreaterThanOrEqualTo: nameQuery)
+            .where('name', isLessThan: nameQuery + 'z')
+            .get();
+
+        // Combine results and remove duplicates
+        final allDocs = [...usernameDocs.docs, ...nameDocs.docs];
+        final uniqueDocs = allDocs
+            .fold<Map<String, DocumentSnapshot>>({}, (map, doc) {
+              map[doc.id] = doc;
+              return map;
+            })
+            .values
+            .toList();
+
         setState(() {
-          _results = userDocs.docs
+          _results = uniqueDocs
               .map((doc) => {
                     "userId": doc.id,
                     "username": doc['username'],
@@ -58,7 +77,7 @@ class _SearchPageState extends State<SearchPage> {
 
   void _startChat(String userId, String name) async {
     String currentUserId = FirebaseAuth.instance.currentUser!.uid;
-    
+
     // Get current user data
     DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
         .collection('users')
@@ -69,7 +88,8 @@ class _SearchPageState extends State<SearchPage> {
     ids.sort();
     String chatId = ids.join("-");
 
-    DocumentReference chatRef = FirebaseFirestore.instance.collection('chats').doc(chatId);
+    DocumentReference chatRef =
+        FirebaseFirestore.instance.collection('chats').doc(chatId);
 
     await chatRef.set({
       'participants': {
@@ -83,7 +103,8 @@ class _SearchPageState extends State<SearchPage> {
           'userId': currentUserId,
         },
         userId: {
-          'username': _results.firstWhere((user) => user['userId'] == userId)['username'],
+          'username': _results
+              .firstWhere((user) => user['userId'] == userId)['username'],
           'name': name,
           'userId': userId,
         },
@@ -162,8 +183,7 @@ class _SearchPageState extends State<SearchPage> {
               title: Text(_results[index]["name"]),
               subtitle: Text(_results[index]["username"]),
               onTap: () {
-                _startChat(
-                    _results[index]["userId"], _results[index]["name"]);
+                _startChat(_results[index]["userId"], _results[index]["name"]);
               },
             );
           },
