@@ -68,7 +68,7 @@ class _SearchPageState extends State<SearchPage> {
 
   void _onSearchChanged(String query) async {
     if (_isCheckingUsername) {
-      return; // Wait until username check is complete
+      return;
     }
 
     if (query.isNotEmpty) {
@@ -87,57 +87,88 @@ class _SearchPageState extends State<SearchPage> {
 
       try {
         final isUsernameSearch = query.startsWith('@');
-        final usernameQuery = isUsernameSearch ? query : '@$query';
-        final nameQuery = query.toLowerCase();
 
         if (isUsernameSearch) {
-          final usernameDocs = await FirebaseFirestore.instance
+          // Exact username search (case-sensitive) - unchanged
+          final usernameQuery = query;
+          final usernameSnapshot = await FirebaseFirestore.instance
               .collection('users')
               .where('username', isEqualTo: usernameQuery)
               .get();
 
           setState(() {
-            _results = usernameDocs.docs
-                .map((doc) => {
-                      "userId": doc.id,
-                      "username": doc['username'],
-                      "name": doc['name'],
-                      "profilePictureUrl": doc['profilePictureUrl'] ?? '',
-                    })
-                .toList();
+            _results = usernameSnapshot.docs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return {
+                "userId": doc.id,
+                "username": data['username'] ?? '',
+                "name": data['name'] ?? '',
+                "profilePictureUrl": data['profilePictureUrl'] ?? '',
+              };
+            }).toList();
           });
         } else {
-          final usernameDocs = await FirebaseFirestore.instance
-              .collection('users')
-              .where('username', isEqualTo: usernameQuery)
-              .get();
-
-          final nameDocs =
+          final nameQuery = query.toLowerCase();
+          final allUsers =
               await FirebaseFirestore.instance.collection('users').get();
 
-          final filteredNameDocs = nameDocs.docs.where((doc) {
-            final name = doc['name']?.toString().toLowerCase() ?? '';
-            return name.contains(nameQuery);
-          }).toList();
+          List<QueryDocumentSnapshot> matchingUsers = [];
 
-          final allDocs = [...usernameDocs.docs, ...filteredNameDocs];
-          final uniqueDocs = allDocs
-              .fold<Map<String, DocumentSnapshot>>({}, (map, doc) {
-                map[doc.id] = doc;
-                return map;
-              })
-              .values
-              .toList();
+          if (nameQuery.length == 1) {
+            final char = nameQuery[0];
+
+            // Only show names where FIRST word starts with the character
+            matchingUsers = allUsers.docs.where((doc) {
+              final name = doc['name']?.toString().toLowerCase() ?? '';
+              return name.isNotEmpty && name.split(' ')[0].startsWith(char);
+            }).toList();
+
+            // Sort alphabetically
+            matchingUsers.sort((a, b) => (a['name'] ?? '')
+                .toLowerCase()
+                .compareTo((b['name'] ?? '').toLowerCase()));
+          } else {
+            // Original logic for multi-character queries
+            matchingUsers = allUsers.docs.where((doc) {
+              final name = doc['name']?.toString().toLowerCase() ?? '';
+              return name.contains(nameQuery);
+            }).toList();
+
+            matchingUsers.sort((a, b) {
+              final aName = a['name'].toString().toLowerCase();
+              final bName = b['name'].toString().toLowerCase();
+
+              if (aName == nameQuery) return -1;
+              if (bName == nameQuery) return 1;
+
+              final aStarts = aName.startsWith(nameQuery);
+              final bStarts = bName.startsWith(nameQuery);
+              if (aStarts && !bStarts) return -1;
+              if (!aStarts && bStarts) return 1;
+
+              final aLastWord = aName.split(' ').last;
+              final bLastWord = bName.split(' ').last;
+              final aLastMatch = aLastWord.startsWith(nameQuery);
+              final bLastMatch = bLastWord.startsWith(nameQuery);
+              if (aLastMatch && !bLastMatch) return -1;
+              if (!aLastMatch && bLastMatch) return 1;
+
+              return aName
+                  .indexOf(nameQuery)
+                  .compareTo(bName.indexOf(nameQuery));
+            });
+          }
 
           setState(() {
-            _results = uniqueDocs
-                .map((doc) => {
-                      "userId": doc.id,
-                      "username": doc['username'],
-                      "name": doc['name'],
-                      "profilePictureUrl": doc['profilePictureUrl'] ?? '',
-                    })
-                .toList();
+            _results = matchingUsers.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return {
+                "userId": doc.id,
+                "username": data['username'] ?? '',
+                "name": data['name'] ?? '',
+                "profilePictureUrl": data['profilePictureUrl'] ?? '',
+              };
+            }).toList();
           });
         }
       } catch (e) {
