@@ -1,8 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'signup.dart'; // Import the SignUpPage
 import '../../dashboard/chats&calls_button.dart'; // Correct the path to the actual location of HomePage
 import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
-
+import 'package:loading_animation_widget/loading_animation_widget.dart'; // Import loading animation
 
 class SignInPage extends StatefulWidget {
   @override
@@ -14,37 +15,133 @@ class _SignInPageState extends State<SignInPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   String _errorMessage = '';
+  bool _isLoading = true; // Start with loading true
+  bool _obscureText = true;
 
-  bool _obscureText = true; // Add a variable to track password visibility
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthState();
+  }
+
+  Future<void> _checkAuthState() async {
+    // Sign out any existing user to prevent auto sign-in
+    await _auth.signOut();
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   void _signIn() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
     try {
-      print('Attempting to sign in with email: ${_emailController.text}');
+      // 1. First attempt email/password sign in
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
 
       User? user = userCredential.user;
-
-      if (user != null && !user.emailVerified) {
-        // Notify user to verify their email
-        print('Please verify your email before logging in.');
-        // Optionally, send verification email
-        await user.sendEmailVerification();
-      } else {
-        if (userCredential.user != null) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => HomePage()),
-          );
-        }
+      if (user == null) {
+        setState(() {
+          _errorMessage = 'Sign in failed. Please try again.';
+          _isLoading = false;
+        });
+        return;
       }
+
+      // 2. Strictly enforce email verification
+      if (!user.emailVerified) {
+        await _auth.signOut(); // Sign out since email isn't verified
+        setState(() {
+          _errorMessage =
+              'Please verify your email first. Check your inbox for the verification link.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // 3. Verify Firestore record exists and is synced
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        await _auth.signOut(); // Sign out since user record doesn't exist
+        setState(() {
+          _errorMessage = 'Account not properly set up. Please sign up again.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // 4. Update Firestore verification status if needed
+      Map<String, dynamic>? userData = userDoc.data() as Map<String, dynamic>?;
+      if (userData == null || (userData['emailVerified'] != true)) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({'emailVerified': true});
+      }
+
+      // 5. Successful login - navigate to home
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+      );
     } on FirebaseAuthException catch (e) {
-      setState(() {
-        _errorMessage = e.message ?? 'An unknown error occurred';
-      });
-      print('Sign-in error: $e');
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage =
+              'No account found with this email. Please sign up first.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Incorrect password. Please try again.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'Invalid email format. Please check your email.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This account has been disabled. Contact support.';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many attempts. Please try again later.';
+          break;
+        default:
+          errorMessage = 'Login failed. Please try again.';
+      }
+
+      if (mounted) {
+        setState(() {
+          _errorMessage = errorMessage;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'An unexpected error occurred. Please try again.';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -167,15 +264,20 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                   backgroundColor: Colors.blue,
                 ),
-                onPressed: _signIn,
-                child: Text(
-                  'Sign in',
-                  style: TextStyle(
-                    fontSize: 16.0,
-                    color: Colors.white,
-                    fontFamily: 'Chivo',
-                  ),
-                ),
+                onPressed: _isLoading ? null : _signIn,
+                child: _isLoading
+                    ? LoadingAnimationWidget.threeRotatingDots(
+                        color: Colors.white,
+                        size: 24,
+                      )
+                    : Text(
+                        'Sign in',
+                        style: TextStyle(
+                          fontSize: 16.0,
+                          color: Colors.white,
+                          fontFamily: 'Chivo',
+                        ),
+                      ),
               ),
               SizedBox(height: 12),
 
@@ -319,10 +421,13 @@ class _SignInPageState extends State<SignInPage> {
               SizedBox(height: 16),
 
               if (_errorMessage.isNotEmpty)
-                Text(
-                  _errorMessage,
-                  style: TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Text(
+                    _errorMessage,
+                    style: TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
             ],
           ),

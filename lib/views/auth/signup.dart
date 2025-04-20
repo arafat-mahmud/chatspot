@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async'; // Import Timer
 import 'package:email_validator/email_validator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'package:loading_animation_widget/loading_animation_widget.dart'; // Import loading animation
 
 class SignUpPage extends StatefulWidget {
   @override
@@ -13,10 +14,14 @@ class SignUpPage extends StatefulWidget {
 class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController(); // Add email controller
-  final TextEditingController _passwordController = TextEditingController(); // Add password controller
-  final TextEditingController _confirmPasswordController = TextEditingController(); // Add this line
-  final FocusNode _passwordFocusNode = FocusNode(); // Add FocusNode for password field
+  final TextEditingController _emailController =
+      TextEditingController(); // Add email controller
+  final TextEditingController _passwordController =
+      TextEditingController(); // Add password controller
+  final TextEditingController _confirmPasswordController =
+      TextEditingController(); // Add this line
+  final FocusNode _passwordFocusNode =
+      FocusNode(); // Add FocusNode for password field
   String? _selectedGender; // Variable to store selected gender
 
   // Add these variables to track password validation status
@@ -31,6 +36,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   // Add a Timer variable
   Timer? _verificationTimer;
+  bool _isLoading = false;
 
   // Add a boolean variable to track email validity
   bool _isEmailInvalid = false;
@@ -45,9 +51,42 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   void dispose() {
-    _verificationTimer?.cancel(); // Cancel the timer
-    _passwordFocusNode.dispose(); // Dispose of the FocusNode
+    _verificationTimer?.cancel();
+    _nameController.dispose();
+    _dobController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
+  }
+
+  void _startEmailVerificationCheck(User user) {
+    _verificationTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
+      await user.reload();
+      User? updatedUser = FirebaseAuth.instance.currentUser;
+
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (updatedUser?.emailVerified ?? false) {
+        timer.cancel();
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => SignInPage()),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Please verify your email to continue.')),
+          );
+        }
+      }
+    });
   }
 
   @override
@@ -111,13 +150,15 @@ class _SignUpPageState extends State<SignUpPage> {
                     if (value.isEmpty) {
                       _isEmailInvalid = false; // No error for empty input
                     } else {
-                      _isEmailInvalid = !EmailValidator.validate(value); // Update email validity
+                      _isEmailInvalid = !EmailValidator.validate(
+                          value); // Update email validity
                     }
                   });
                 },
                 onEditingComplete: () {
                   setState(() {
-                    _isEmailInvalid = false; // Reset error when editing is complete
+                    _isEmailInvalid =
+                        false; // Reset error when editing is complete
                   });
                 },
               ),
@@ -141,7 +182,8 @@ class _SignUpPageState extends State<SignUpPage> {
                     lastDate: DateTime.now(),
                   );
                   if (pickedDate != null) {
-                    _dobController.text = "${pickedDate.toLocal()}".split(' ')[0];
+                    _dobController.text =
+                        "${pickedDate.toLocal()}".split(' ')[0];
                   }
                 },
               ),
@@ -174,7 +216,8 @@ class _SignUpPageState extends State<SignUpPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
-                    controller: _passwordController, // Use the password controller
+                    controller:
+                        _passwordController, // Use the password controller
                     obscureText: !_isPasswordVisible, // Toggle visibility
                     focusNode: _passwordFocusNode, // Attach FocusNode
                     decoration: InputDecoration(
@@ -184,12 +227,15 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                          _isPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                           color: Colors.blue,
                         ),
                         onPressed: () {
                           setState(() {
-                            _isPasswordVisible = !_isPasswordVisible; // Toggle password visibility
+                            _isPasswordVisible =
+                                !_isPasswordVisible; // Toggle password visibility
                           });
                         },
                       ),
@@ -209,7 +255,8 @@ class _SignUpPageState extends State<SignUpPage> {
 
               // Confirm Password Field
               TextField(
-                controller: _confirmPasswordController, // Use the confirm password controller
+                controller:
+                    _confirmPasswordController, // Use the confirm password controller
                 obscureText: !_isConfirmPasswordVisible, // Toggle visibility
                 decoration: InputDecoration(
                   labelText: 'Confirm Password',
@@ -218,12 +265,15 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      _isConfirmPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                       color: Colors.blue,
                     ),
                     onPressed: () {
                       setState(() {
-                        _isConfirmPasswordVisible = !_isConfirmPasswordVisible; // Toggle password visibility
+                        _isConfirmPasswordVisible =
+                            !_isConfirmPasswordVisible; // Toggle password visibility
                       });
                     },
                   ),
@@ -244,105 +294,160 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   backgroundColor: Colors.blue,
                 ),
-                onPressed: () async {
-                  // Validate required fields
-                  if (_nameController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Please enter your name')),
-                    );
-                    return; // Prevent sign-up if name is empty
-                  }
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        setState(() {
+                          _isLoading = true;
+                        });
 
-                  if (_emailController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Please enter your email')),
-                    );
-                    return; // Prevent sign-up if email is empty
-                  }
+                        // Validate required fields
+                        if (_nameController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Please enter your name')),
+                          );
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          return; // Prevent sign-up if name is empty
+                        }
 
-                  if (_dobController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Please enter your date of birth')),
-                    );
-                    return; // Prevent sign-up if date of birth is empty
-                  }
+                        if (_emailController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Please enter your email')),
+                          );
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          return; // Prevent sign-up if email is empty
+                        }
 
-                  if (_selectedGender == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Please select a gender')),
-                    );
-                    return; // Prevent sign-up if no gender is selected
-                  }
+                        if (_dobController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content:
+                                    Text('Please enter your date of birth')),
+                          );
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          return; // Prevent sign-up if date of birth is empty
+                        }
 
-                  // Validate email format
-                  if (!EmailValidator.validate(_emailController.text)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Please enter a valid email')),
-                    );
-                    return; // Prevent sign-up if email is invalid
-                  }
+                        if (_selectedGender == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Please select a gender')),
+                          );
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          return; // Prevent sign-up if no gender is selected
+                        }
 
-                  if (!_isPasswordValid(_passwordController.text)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(
-                              'Password must include uppercase, lowercase, numbers, special characters, and be at least 6 characters long.')),
-                    );
-                    return; // Prevent sign-up if password is invalid
-                  }
+                        // Validate email format
+                        if (!EmailValidator.validate(_emailController.text)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text('Please enter a valid email')),
+                          );
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          return; // Prevent sign-up if email is invalid
+                        }
 
-                  // Check if Password and Confirm Password match
-                  if (_passwordController.text != _confirmPasswordController.text) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Passwords do not match')),
-                    );
-                    return; // Prevent sign-up if passwords do not match
-                  }
+                        if (!_isPasswordValid(_passwordController.text)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text(
+                                    'Password must include uppercase, lowercase, numbers, special characters, and be at least 6 characters long.')),
+                          );
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          return; // Prevent sign-up if password is invalid
+                        }
 
-                  try {
-                    UserCredential userCredential = await FirebaseAuth.instance
-                        .createUserWithEmailAndPassword(
-                      email: _emailController.text,
-                      password: _passwordController.text,
-                    );
+                        // Check if Password and Confirm Password match
+                        if (_passwordController.text !=
+                            _confirmPasswordController.text) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Passwords do not match')),
+                          );
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          return; // Prevent sign-up if passwords do not match
+                        }
 
-                    // Send verification email
-                    await userCredential.user!.sendEmailVerification();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(
-                              'Please verify your email within 5 minutes to continue.')),
-                    );
+                        try {
+                          UserCredential userCredential = await FirebaseAuth
+                              .instance
+                              .createUserWithEmailAndPassword(
+                            email: _emailController.text,
+                            password: _passwordController.text,
+                          );
 
-                    // Start checking email verification status
-                    _startEmailVerificationCheck(userCredential.user!);
+                          // Send verification email
+                          await userCredential.user!.sendEmailVerification();
 
-                    // Save user information to Firestore
-                    await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(userCredential.user!.uid)
-                        .set({
-                      'name': _nameController.text,
-                      'email': userCredential.user!.email,
-                      'gender': _selectedGender,
-                      'dob': _dobController.text,
-                      'uid': userCredential.user!.uid,
-                    });
-                  } on FirebaseAuthException catch (e) {
-                    // Handle error (e.g., show a message)
-                    print('Error saving user data to Firestore: $e'); // Log the error
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to save user data: $e')),
-                    );
-                  }
-                },
-                child: Text(
-                  'Sign up',
-                  style: TextStyle(
-                    fontSize: 16.0,
-                    color: Colors.white,
-                  ),
-                ),
+                          // Save user information to Firestore
+                          await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(userCredential.user!.uid)
+                              .set({
+                            'name': _nameController.text,
+                            'email': userCredential.user!.email,
+                            'gender': _selectedGender,
+                            'dob': _dobController.text,
+                            'uid': userCredential.user!.uid,
+                            'emailVerified': false,
+                          });
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text(
+                                    'Verification email sent. Please verify your email within 5 minutes.')),
+                          );
+
+                          // Navigate to sign in page after 5 seconds
+                          Future.delayed(Duration(seconds: 5), () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => SignInPage()),
+                            );
+                          });
+                        } on FirebaseAuthException catch (e) {
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: ${e.message}')),
+                          );
+                        } catch (e) {
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text(
+                                    'An error occurred. Please try again.')),
+                          );
+                        }
+                      },
+                child: _isLoading
+                    ? LoadingAnimationWidget.threeRotatingDots(
+                        color: Colors.white,
+                        size: 24,
+                      )
+                    : Text(
+                        'Sign up',
+                        style: TextStyle(
+                          fontSize: 16.0,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
               SizedBox(height: 16),
 
@@ -399,7 +504,8 @@ class _SignUpPageState extends State<SignUpPage> {
         _buildRequirement('At least one uppercase letter', _isUpperCaseValid),
         _buildRequirement('At least one lowercase letter', _isLowerCaseValid),
         _buildRequirement('At least one number', _isNumberValid),
-        _buildRequirement('At least one special character', _isSpecialCharValid),
+        _buildRequirement(
+            'At least one special character', _isSpecialCharValid),
       ],
     );
   }
@@ -413,26 +519,9 @@ class _SignUpPageState extends State<SignUpPage> {
           color: isValid ? Colors.green : Colors.red,
         ),
         SizedBox(width: 8),
-        Text(text, style: TextStyle(color: isValid ? Colors.green : Colors.red)),
+        Text(text,
+            style: TextStyle(color: isValid ? Colors.green : Colors.red)),
       ],
     );
-  }
-
-  // Add this method to start checking email verification status
-  void _startEmailVerificationCheck(User user) {
-    _verificationTimer = Timer.periodic(Duration(seconds: 300), (timer) async {
-      await user.reload();
-      User updatedUser = FirebaseAuth.instance.currentUser!;
-
-      if (updatedUser.emailVerified) {
-        timer.cancel();
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (context) => SignInPage()));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please verify your email within 5 minutes to continue.')),
-        );
-      }
-    });
   }
 }
