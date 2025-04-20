@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'signup.dart'; // Import the SignUpPage
@@ -15,34 +16,141 @@ class _SignInPageState extends State<SignInPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   String _errorMessage = '';
-  bool _isLoading = true; // Start with loading true
+  bool _isLoading = true;
   bool _obscureText = true;
+  Timer? _sessionTimer;
+  bool _isDisposed = false; // Track disposed state
 
   @override
   void initState() {
     super.initState();
-    _checkAuthState();
+    _initializeAuthCheck();
   }
 
-  Future<void> _checkAuthState() async {
-    // Sign out any existing user to prevent auto sign-in
-    await _auth.signOut();
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+  Future<void> _initializeAuthCheck() async {
+    try {
+      await _handleReturningUser();
+    } catch (e) {
+      if (!_isDisposed && mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Error initializing authentication check';
+        });
+      }
     }
+  }
+
+  Future<void> _checkLastLogin(User user) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final lastLogin = userDoc['lastLogin'] as Timestamp?;
+      final now = Timestamp.now();
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({'lastLogin': now});
+
+      if (lastLogin != null) {
+        final difference = now.toDate().difference(lastLogin.toDate());
+        if (difference.inDays >= 7) {
+          await _auth.signOut();
+          if (!_isDisposed && mounted) {
+            setState(() {
+              _isLoading = false;
+              _errorMessage = 'Session expired. Please sign in again.';
+            });
+          }
+        }
+      }
+    } catch (e) {
+      if (!_isDisposed && mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Error checking session. Please sign in again.';
+        });
+      }
+    }
+  }
+
+  Future<void> _handleReturningUser() async {
+    final user = _auth.currentUser;
+    if (user != null && user.emailVerified) {
+      if (!_isDisposed && mounted) {
+        setState(() => _isLoading = true);
+      }
+
+      try {
+        await _checkLastLogin(user);
+        if (!_isDisposed && mounted && _auth.currentUser != null) {
+          _startSessionTimer(user);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomePage()),
+          );
+        }
+      } catch (e) {
+        if (!_isDisposed && mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    } else {
+      await _auth.signOut();
+      if (!_isDisposed && mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _startSessionTimer(User user) {
+    _sessionTimer?.cancel();
+    _sessionTimer = Timer.periodic(Duration(hours: 1), (timer) async {
+      if (_isDisposed || !mounted) {
+        timer.cancel();
+        return;
+      }
+
+      try {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        final lastLogin = userDoc['lastLogin'] as Timestamp?;
+        if (lastLogin != null) {
+          final difference = DateTime.now().difference(lastLogin.toDate());
+          if (difference.inDays >= 7) {
+            timer.cancel();
+            await _auth.signOut();
+            if (!_isDisposed && mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => SignInPage()),
+              );
+            }
+          }
+        }
+      } catch (e) {
+        timer.cancel();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _emailController.dispose();
     _passwordController.dispose();
+    _sessionTimer?.cancel();
     super.dispose();
   }
 
   void _signIn() async {
-    if (!mounted) return;
+    if (_isDisposed || !mounted) return;
 
     setState(() {
       _isLoading = true;
@@ -50,14 +158,13 @@ class _SignInPageState extends State<SignInPage> {
     });
 
     try {
-      // 1. First attempt email/password sign in
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
       User? user = userCredential.user;
-      if (user == null) {
+      if (user == null || _isDisposed || !mounted) {
         setState(() {
           _errorMessage = 'Sign in failed. Please try again.';
           _isLoading = false;
@@ -65,53 +172,58 @@ class _SignInPageState extends State<SignInPage> {
         return;
       }
 
-      // 2. Strictly enforce email verification
       if (!user.emailVerified) {
-        await _auth.signOut(); // Sign out since email isn't verified
-        setState(() {
-          _errorMessage =
-              'Please verify your email first. Check your inbox for the verification link.';
-          _isLoading = false;
-        });
+        await _auth.signOut();
+        if (!_isDisposed && mounted) {
+          setState(() {
+            _errorMessage = 'Please verify your email first.';
+            _isLoading = false;
+          });
+        }
         return;
       }
 
-      // 3. Verify Firestore record exists and is synced
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      // Get or create user document
+      DocumentReference userDocRef =
+          FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+      // Use set with merge to create or update the document
+      await userDocRef.set({
+        'email': user.email,
+        'emailVerified': true,
+        'lastLogin': FieldValue.serverTimestamp(), // Use server timestamp
+      }, SetOptions(merge: true));
+
+      // Now get the document to check if it exists
+      DocumentSnapshot userDoc = await userDocRef.get();
 
       if (!userDoc.exists) {
-        await _auth.signOut(); // Sign out since user record doesn't exist
-        setState(() {
-          _errorMessage = 'Account not properly set up. Please sign up again.';
-          _isLoading = false;
-        });
+        await _auth.signOut();
+        if (!_isDisposed && mounted) {
+          setState(() {
+            _errorMessage =
+                'Account not properly set up. Please sign up again.';
+            _isLoading = false;
+          });
+        }
         return;
       }
 
-      // 4. Update Firestore verification status if needed
-      Map<String, dynamic>? userData = userDoc.data() as Map<String, dynamic>?;
-      if (userData == null || (userData['emailVerified'] != true)) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update({'emailVerified': true});
-      }
+      // Start session timer
+      if (_isDisposed || !mounted) return;
+      _startSessionTimer(user);
 
-      // 5. Successful login - navigate to home
-      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => HomePage()),
       );
     } on FirebaseAuthException catch (e) {
+      if (_isDisposed || !mounted) return;
+
       String errorMessage;
       switch (e.code) {
         case 'user-not-found':
-          errorMessage =
-              'No account found with this email. Please sign up first.';
+          errorMessage = 'No account found. Please sign up first.';
           break;
         case 'wrong-password':
           errorMessage = 'Incorrect password. Please try again.';
@@ -120,31 +232,30 @@ class _SignInPageState extends State<SignInPage> {
           errorMessage = 'Invalid email format. Please check your email.';
           break;
         case 'user-disabled':
-          errorMessage = 'This account has been disabled. Contact support.';
+          errorMessage = 'Account disabled. Contact support.';
           break;
         case 'too-many-requests':
-          errorMessage = 'Too many attempts. Please try again later.';
+          errorMessage = 'Too many attempts. Try again later.';
           break;
         default:
           errorMessage = 'Login failed. Please try again.';
       }
 
-      if (mounted) {
-        setState(() {
-          _errorMessage = errorMessage;
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _errorMessage = errorMessage;
+        _isLoading = false;
+      });
     } catch (e) {
-      if (mounted) {
+      if (!_isDisposed && mounted) {
         setState(() {
-          _errorMessage = 'An unexpected error occurred. Please try again.';
+          _errorMessage = 'An unexpected error occurred.';
           _isLoading = false;
         });
       }
     }
   }
 
+  // [REST OF YOUR EXISTING BUILD METHOD REMAINS EXACTLY THE SAME]
   @override
   Widget build(BuildContext context) {
     return Scaffold(
