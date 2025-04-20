@@ -98,6 +98,7 @@ class _SearchPageState extends State<SearchPage> {
 
           setState(() {
             _results = usernameSnapshot.docs.map((doc) {
+              // ignore: unnecessary_cast
               final data = doc.data() as Map<String, dynamic>;
               return {
                 "userId": doc.id,
