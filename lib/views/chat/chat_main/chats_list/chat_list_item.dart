@@ -40,7 +40,7 @@ class _ChatListItemState extends State<ChatListItem> {
 
   Future<void> _markAsRead() async {
     if (_isRead) return;
-    
+
     try {
       // Try to update Firestore if permissions allow
       await FirebaseFirestore.instance
@@ -53,7 +53,7 @@ class _ChatListItemState extends State<ChatListItem> {
       // If no permissions, we'll just update locally
       debugPrint("Couldn't update read status in Firestore: $e");
     }
-    
+
     setState(() {
       _isRead = true;
     });
@@ -115,7 +115,7 @@ class _ChatListItemState extends State<ChatListItem> {
       title: Text(
         widget.name,
         style: TextStyle(
-          fontWeight: _isRead ? FontWeight.normal : FontWeight.bold,
+          fontWeight: FontWeight.normal,
         ),
       ),
       subtitle: Text(
@@ -123,14 +123,14 @@ class _ChatListItemState extends State<ChatListItem> {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          fontWeight: _isRead ? FontWeight.normal : FontWeight.bold,
+          fontWeight: FontWeight.normal,
         ),
       ),
       trailing: Text(
         DateFormatters.formatMessageTime(widget.timestamp),
         style: TextStyle(
-          color: _isRead ? Colors.grey : Colors.blue,
-          fontWeight: _isRead ? FontWeight.normal : FontWeight.bold,
+          color: Colors.grey,
+          fontWeight: FontWeight.normal,
         ),
       ),
       onTap: () {
