@@ -12,9 +12,10 @@ const String base64SignerKey = 'yWflScrPyZIFtzEXL1RIEIah7Gq1hUwCgiobw4+TIFQ=';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
   } catch (e) {
     print('Firebase init error: $e');
   }
@@ -31,7 +32,7 @@ class MyApp extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         ThemeService.updateCurrentUser(snapshot.data?.uid);
-        
+
         return ValueListenableBuilder<ThemeData>(
           valueListenable: ThemeService.themeNotifier,
           builder: (context, theme, child) {

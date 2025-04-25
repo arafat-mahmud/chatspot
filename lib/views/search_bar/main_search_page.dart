@@ -37,19 +37,23 @@ class _SearchPageState extends State<SearchPage> {
             .doc(currentUser.uid)
             .get();
 
-        setState(() {
-          _hasUsername = userDoc.exists &&
-              userDoc.data()?.containsKey('username') == true &&
-              userDoc['username'] != null &&
-              userDoc['username'].toString().isNotEmpty;
-          _isCheckingUsername = false;
-        });
+        if (mounted) {
+          setState(() {
+            _hasUsername = userDoc.exists &&
+                userDoc.data()?.containsKey('username') == true &&
+                userDoc['username'] != null &&
+                userDoc['username'].toString().isNotEmpty;
+            _isCheckingUsername = false;
+          });
+        }
       }
     } catch (e) {
       print("Error checking username: $e");
-      setState(() {
-        _isCheckingUsername = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isCheckingUsername = false;
+        });
+      }
     }
   }
 
@@ -61,9 +65,11 @@ class _SearchPageState extends State<SearchPage> {
 
   Future<void> _loadSearchHistory() async {
     final history = await _searchHistory.getSearchHistory();
-    setState(() {
-      _historyResults = history;
-    });
+    if (mounted) {
+      setState(() {
+        _historyResults = history;
+      });
+    }
   }
 
   void _onSearchChanged(String query) async {
@@ -74,40 +80,45 @@ class _SearchPageState extends State<SearchPage> {
     if (query.isNotEmpty) {
       if (!_hasUsername) {
         _showUsernameAlert();
-        setState(() {
-          _results = [];
-          _showHistory = true;
-        });
+        if (mounted) {
+          setState(() {
+            _results = [];
+            _showHistory = true;
+          });
+        }
         return;
       }
 
-      setState(() {
-        _showHistory = false;
-      });
+      if (mounted) {
+        setState(() {
+          _showHistory = false;
+        });
+      }
 
       try {
         final isUsernameSearch = query.startsWith('@');
 
         if (isUsernameSearch) {
-          // Exact username search (case-sensitive) - unchanged
           final usernameQuery = query;
           final usernameSnapshot = await FirebaseFirestore.instance
               .collection('users')
               .where('username', isEqualTo: usernameQuery)
               .get();
 
-          setState(() {
-            _results = usernameSnapshot.docs.map((doc) {
-              // ignore: unnecessary_cast
-              final data = doc.data() as Map<String, dynamic>;
-              return {
-                "userId": doc.id,
-                "username": data['username'] ?? '',
-                "name": data['name'] ?? '',
-                "profilePictureUrl": data['profilePictureUrl'] ?? '',
-              };
-            }).toList();
-          });
+          if (mounted) {
+            setState(() {
+              _results = usernameSnapshot.docs.map((doc) {
+                // ignore: unnecessary_cast
+                final data = doc.data() as Map<String, dynamic>;
+                return {
+                  "userId": doc.id,
+                  "username": data['username'] ?? '',
+                  "name": data['name'] ?? '',
+                  "profilePictureUrl": data['profilePictureUrl'] ?? '',
+                };
+              }).toList();
+            });
+          }
         } else {
           final nameQuery = query.toLowerCase();
           final allUsers =
@@ -118,18 +129,15 @@ class _SearchPageState extends State<SearchPage> {
           if (nameQuery.length == 1) {
             final char = nameQuery[0];
 
-            // Only show names where FIRST word starts with the character
             matchingUsers = allUsers.docs.where((doc) {
               final name = doc['name']?.toString().toLowerCase() ?? '';
               return name.isNotEmpty && name.split(' ')[0].startsWith(char);
             }).toList();
 
-            // Sort alphabetically
             matchingUsers.sort((a, b) => (a['name'] ?? '')
                 .toLowerCase()
                 .compareTo((b['name'] ?? '').toLowerCase()));
           } else {
-            // Original logic for multi-character queries
             matchingUsers = allUsers.docs.where((doc) {
               final name = doc['name']?.toString().toLowerCase() ?? '';
               return name.contains(nameQuery);
@@ -160,26 +168,30 @@ class _SearchPageState extends State<SearchPage> {
             });
           }
 
-          setState(() {
-            _results = matchingUsers.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return {
-                "userId": doc.id,
-                "username": data['username'] ?? '',
-                "name": data['name'] ?? '',
-                "profilePictureUrl": data['profilePictureUrl'] ?? '',
-              };
-            }).toList();
-          });
+          if (mounted) {
+            setState(() {
+              _results = matchingUsers.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return {
+                  "userId": doc.id,
+                  "username": data['username'] ?? '',
+                  "name": data['name'] ?? '',
+                  "profilePictureUrl": data['profilePictureUrl'] ?? '',
+                };
+              }).toList();
+            });
+          }
         }
       } catch (e) {
         print("Error searching for user: $e");
       }
     } else {
-      setState(() {
-        _results = [];
-        _showHistory = true;
-      });
+      if (mounted) {
+        setState(() {
+          _results = [];
+          _showHistory = true;
+        });
+      }
     }
   }
 
@@ -214,6 +226,9 @@ class _SearchPageState extends State<SearchPage> {
         .doc(currentUserId)
         .get();
 
+    DocumentSnapshot otherUserDoc =
+        await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
     List<String> ids = [currentUserId, userId];
     ids.sort();
     String chatId = ids.join("-");
@@ -233,9 +248,8 @@ class _SearchPageState extends State<SearchPage> {
           'userId': currentUserId,
         },
         userId: {
-          'username': _results
-              .firstWhere((user) => user['userId'] == userId)['username'],
-          'name': name,
+          'username': otherUserDoc['username'] ?? '',
+          'name': otherUserDoc['name'] ?? name,
           'userId': userId,
         },
       },

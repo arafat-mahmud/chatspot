@@ -1,4 +1,3 @@
-// search_history.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,7 +7,6 @@ class SearchHistory {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Add a search to user's history
   Future<void> addToSearchHistory(String searchedUserId) async {
     try {
       final currentUserId = _auth.currentUser!.uid;
@@ -30,70 +28,104 @@ class SearchHistory {
       }
 
       await userRef.update({'searchHistory': currentHistory});
+      print('Successfully added $searchedUserId to search history');
     } catch (e) {
       print("Error adding to search history: $e");
+      rethrow;
     }
   }
 
-  // Get user's search history
   Future<List<Map<String, dynamic>>> getSearchHistory() async {
     try {
       final currentUserId = _auth.currentUser!.uid;
+      print('Fetching search history for user: $currentUserId');
+
       final userDoc =
           await _firestore.collection('users').doc(currentUserId).get();
 
-      if (userDoc.exists &&
-          userDoc.data()?.containsKey('searchHistory') == true) {
-        final List<dynamic> historyIds = userDoc['searchHistory'];
+      if (!userDoc.exists) {
+        print('User document does not exist');
+        return [];
+      }
 
-        // Fetch user details for each history item
-        List<Map<String, dynamic>> historyUsers = [];
-        for (var userId in historyIds) {
+      final userData = userDoc.data();
+      if (userData == null || !userData.containsKey('searchHistory')) {
+        print('No searchHistory field found in user document');
+        return [];
+      }
+
+      final List<dynamic> historyIds = userData['searchHistory'];
+      print('Found search history IDs: $historyIds');
+
+      if (historyIds.isEmpty) {
+        print('Search history is empty');
+        return [];
+      }
+
+      // Fetch user details for each history item with error handling
+      List<Map<String, dynamic>> historyUsers = [];
+      for (var userId in historyIds) {
+        try {
+          if (userId == null || userId.toString().isEmpty) {
+            print('Skipping empty user ID in history');
+            continue;
+          }
+
+          print('Fetching user details for: $userId');
           final userDoc =
-              await _firestore.collection('users').doc(userId).get();
+              await _firestore.collection('users').doc(userId.toString()).get();
+
           if (userDoc.exists) {
+            final userData = userDoc.data()!;
             historyUsers.add({
               "userId": userDoc.id,
-              "username": userDoc['username'],
-              "name": userDoc['name'],
-              "profilePictureUrl": userDoc['profilePictureUrl'] ?? '',
+              "username": userData['username'] ?? '',
+              "name": userData['name'] ?? '',
+              "profilePictureUrl": userData['profilePictureUrl'] ?? '',
             });
+            print('Added user to history: ${userDoc.id}');
+          } else {
+            print('User document not found for ID: $userId');
           }
+        } catch (e) {
+          print("Error fetching user $userId: $e");
         }
-        return historyUsers;
       }
-      return [];
+
+      print('Returning history users: ${historyUsers.length} items');
+      return historyUsers;
     } catch (e) {
       print("Error getting search history: $e");
-      return [];
+      rethrow;
     }
   }
 
-  // Clear all search history
   Future<void> clearSearchHistory() async {
     try {
       final currentUserId = _auth.currentUser!.uid;
       await _firestore.collection('users').doc(currentUserId).update({
         'searchHistory': [],
       });
+      print('Cleared search history');
     } catch (e) {
       print("Error clearing search history: $e");
+      rethrow;
     }
   }
 
-  // Remove a single item from search history
   Future<void> removeFromSearchHistory(String userId) async {
     try {
       final currentUserId = _auth.currentUser!.uid;
       await _firestore.collection('users').doc(currentUserId).update({
         'searchHistory': FieldValue.arrayRemove([userId]),
       });
+      print('Removed $userId from search history');
     } catch (e) {
       print("Error removing from search history: $e");
+      rethrow;
     }
   }
 
-  // Widget to display search history
   Widget buildSearchHistoryList({
     required List<Map<String, dynamic>> history,
     required Function(String, String) onUserTap,
@@ -101,6 +133,8 @@ class SearchHistory {
     required Function() onClearAll,
     required BuildContext context,
   }) {
+    print('Building history list with ${history.length} items');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -117,7 +151,7 @@ class SearchHistory {
               ),
               if (history.isNotEmpty)
                 TextButton(
-                  onPressed: onClearAll, // Use the passed function
+                  onPressed: onClearAll,
                   child: Text('Clear all'),
                 ),
             ],
@@ -133,38 +167,41 @@ class SearchHistory {
                   ),
             ),
           ),
-        ...history.map((user) => ListTile(
-              leading: CircleAvatar(
-                radius: 24,
-                child: user["profilePictureUrl"]?.isNotEmpty == true
-                    ? CachedNetworkImage(
-                        imageUrl: user["profilePictureUrl"],
-                        imageBuilder: (context, imageProvider) => CircleAvatar(
-                          backgroundImage: imageProvider,
-                          radius: 24,
-                        ),
-                        placeholder: (context, url) => CircleAvatar(
-                          child: Text(user["name"][0].toUpperCase()),
-                          radius: 24,
-                        ),
-                        errorWidget: (context, url, error) => CircleAvatar(
-                          child: Text(user["name"][0].toUpperCase()),
-                          radius: 24,
-                        ),
-                      )
-                    : CircleAvatar(
+        ...history.map((user) {
+          print('Displaying user in history: ${user['userId']}');
+          return ListTile(
+            leading: CircleAvatar(
+              radius: 24,
+              child: user["profilePictureUrl"]?.isNotEmpty == true
+                  ? CachedNetworkImage(
+                      imageUrl: user["profilePictureUrl"],
+                      imageBuilder: (context, imageProvider) => CircleAvatar(
+                        backgroundImage: imageProvider,
+                        radius: 24,
+                      ),
+                      placeholder: (context, url) => CircleAvatar(
                         child: Text(user["name"][0].toUpperCase()),
                         radius: 24,
                       ),
-              ),
-              title: Text(user["name"]),
-              subtitle: Text(user["username"]),
-              trailing: IconButton(
-                icon: Icon(Icons.close, size: 20),
-                onPressed: () => onRemove(user["userId"]),
-              ),
-              onTap: () => onUserTap(user["userId"], user["name"]),
-            )),
+                      errorWidget: (context, url, error) => CircleAvatar(
+                        child: Text(user["name"][0].toUpperCase()),
+                        radius: 24,
+                      ),
+                    )
+                  : CircleAvatar(
+                      child: Text(user["name"][0].toUpperCase()),
+                      radius: 24,
+                    ),
+            ),
+            title: Text(user["name"]),
+            subtitle: Text(user["username"]),
+            trailing: IconButton(
+              icon: Icon(Icons.close, size: 20),
+              onPressed: () => onRemove(user["userId"]),
+            ),
+            onTap: () => onUserTap(user["userId"], user["name"]),
+          );
+        }),
       ],
     );
   }
