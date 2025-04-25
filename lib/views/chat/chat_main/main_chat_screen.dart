@@ -63,7 +63,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
           .collection('users')
           .doc(widget.userId)
           .get();
-      
+
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
         if (mounted) {
@@ -159,16 +159,26 @@ class _UserChatScreenState extends State<UserChatScreen> {
                   _profilePictureUrl?.isNotEmpty == true
                       ? CircleAvatar(
                           radius: 16,
-                          backgroundImage: CachedNetworkImageProvider(_profilePictureUrl!),
+                          backgroundImage:
+                              CachedNetworkImageProvider(_profilePictureUrl!),
                         )
                       : CircleAvatar(
                           radius: 16,
-                          child: Text(widget.userName.isNotEmpty 
-                              ? widget.userName[0].toUpperCase() 
+                          child: Text(widget.userName.isNotEmpty
+                              ? widget.userName[0].toUpperCase()
                               : ''),
                         ),
                   SizedBox(width: 12),
-                  Text(widget.userName),
+                  Flexible(
+                    child: Text(
+                      widget.userName,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 18, // You can adjust this as needed
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
