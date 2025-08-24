@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:chatspot/services/chat_initialization_service.dart';
 import '../chat/chat_main/main_chat_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'search_history.dart';
@@ -221,39 +222,16 @@ class _SearchPageState extends State<SearchPage> {
     await _searchHistory.addToSearchHistory(userId);
     String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
-    DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUserId)
-        .get();
-
-    DocumentSnapshot otherUserDoc =
-        await FirebaseFirestore.instance.collection('users').doc(userId).get();
-
     List<String> ids = [currentUserId, userId];
     ids.sort();
     String chatId = ids.join("-");
 
-    DocumentReference chatRef =
-        FirebaseFirestore.instance.collection('chats').doc(chatId);
-
-    await chatRef.set({
-      'participants': {
-        currentUserId: true,
-        userId: true,
-      },
-      'users': {
-        currentUserId: {
-          'username': currentUserDoc['username'],
-          'name': currentUserDoc['name'],
-          'userId': currentUserId,
-        },
-        userId: {
-          'username': otherUserDoc['username'] ?? '',
-          'name': otherUserDoc['name'] ?? name,
-          'userId': userId,
-        },
-      },
-    }, SetOptions(merge: true));
+    // Use the chat initialization service to ensure proper chat structure
+    await ChatInitializationService.ensureChatStructure(
+      chatId: chatId,
+      currentUserId: currentUserId,
+      otherUserId: userId,
+    );
 
     Navigator.push(
       context,

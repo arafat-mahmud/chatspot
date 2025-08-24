@@ -1,4 +1,3 @@
-// message_services.dart (updated)
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -14,6 +13,16 @@ class MessageServices {
       DocumentReference chatRef =
           FirebaseFirestore.instance.collection('chats').doc(chatId);
 
+      // Get user data for both participants
+      final currentUserDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .get();
+      final receiverUserDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(receiverId)
+          .get();
+
       WriteBatch batch = FirebaseFirestore.instance.batch();
 
       // Add new message
@@ -27,13 +36,23 @@ class MessageServices {
         'seenBy': {}, // Initialize empty seenBy map
       });
 
-      // Update chat document with message info only when actually sending a message
+      // Update chat document with message info and user data
       batch.set(
           chatRef,
           {
             'lastMessage': message,
             'lastMessageTime': FieldValue.serverTimestamp(),
             'lastMessageSenderId': currentUserId,
+            'users': {
+              currentUserId: {
+                'name': currentUserDoc.data()?['name'] ?? 'Unknown',
+                // Add other user fields if needed
+              },
+              receiverId: {
+                'name': receiverUserDoc.data()?['name'] ?? 'Unknown',
+                // Add other user fields if needed
+              }
+            }
           },
           SetOptions(merge: true));
 
@@ -58,6 +77,16 @@ class MessageServices {
       DocumentReference chatRef =
           FirebaseFirestore.instance.collection('chats').doc(chatId);
 
+      // Get user data for both participants
+      final currentUserDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .get();
+      final receiverUserDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(receiverId)
+          .get();
+
       WriteBatch batch = FirebaseFirestore.instance.batch();
 
       // Add new message
@@ -72,13 +101,23 @@ class MessageServices {
         'seenBy': {}, // Initialize empty seenBy map
       });
 
-      // Update chat document
+      // Update chat document with user data
       batch.set(
           chatRef,
           {
             'lastMessage': '[Photo]',
             'lastMessageTime': FieldValue.serverTimestamp(),
             'lastMessageSenderId': currentUserId,
+            'users': {
+              currentUserId: {
+                'name': currentUserDoc.data()?['name'] ?? 'Unknown',
+                // Add other user fields if needed
+              },
+              receiverId: {
+                'name': receiverUserDoc.data()?['name'] ?? 'Unknown',
+                // Add other user fields if needed
+              }
+            }
           },
           SetOptions(merge: true));
 

@@ -1,4 +1,3 @@
-// chat_list.dart
 import 'package:chatspot/views/chat/chat_main/main_chat_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,8 +19,27 @@ class _ChatListState extends State<ChatList> {
   @override
   void initState() {
     super.initState();
-    _currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    _fetchChats();
+    _getCurrentUser();
+  }
+
+  void _getCurrentUser() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      setState(() {
+        _currentUserId = user.uid;
+      });
+      _fetchChats();
+    } else {
+      // Listen for auth state changes in case user signs in later
+      FirebaseAuth.instance.authStateChanges().listen((User? user) {
+        if (user != null) {
+          setState(() {
+            _currentUserId = user.uid;
+          });
+          _fetchChats();
+        }
+      });
+    }
   }
 
   void _fetchChats() {
@@ -34,7 +52,6 @@ class _ChatListState extends State<ChatList> {
       _chatStream = FirebaseFirestore.instance
           .collection('chats')
           .where('participants.$_currentUserId', isEqualTo: true)
-          .orderBy('lastMessageTime', descending: true)
           .snapshots()
           .handleError((error) {
         debugPrint("Error fetching chats: $error");
@@ -48,8 +65,11 @@ class _ChatListState extends State<ChatList> {
     _fetchChats();
   }
 
-  Future<void> _precacheUserData(String userId) async {
-    if (_userCache.containsKey(userId)) return;
+  Future<Map<String, dynamic>> _getUserData(String userId) async {
+    // Check cache first
+    if (_userCache.containsKey(userId)) {
+      return _userCache[userId]!;
+    }
 
     try {
       final doc = await FirebaseFirestore.instance
@@ -59,9 +79,12 @@ class _ChatListState extends State<ChatList> {
 
       if (doc.exists) {
         _userCache[userId] = doc.data() as Map<String, dynamic>;
+        return _userCache[userId]!;
       }
+      return {'name': 'Unknown User'};
     } catch (e) {
-      debugPrint("Error precaching user data: $e");
+      debugPrint("Error getting user data: $e");
+      return {'name': 'Unknown User'};
     }
   }
 
@@ -89,70 +112,84 @@ class _ChatListState extends State<ChatList> {
               return const Center(child: Text("No active chats yet."));
             }
 
-            final chatDocs = snapshot.data!.docs;
+            final chatDocs = snapshot.data!.docs.toList();
 
-            // Precache user data for all chats
-            for (final doc in chatDocs) {
-              final chatData = doc.data() as Map<String, dynamic>;
-              final participants = chatData['participants'] ?? {};
-              // ignore: unused_local_variable
-              final users = chatData['users'] ?? {};
+            // Sort chats by lastMessageTime on client side (newest first)
+            chatDocs.sort((a, b) {
+              final aData = a.data() as Map<String, dynamic>;
+              final bData = b.data() as Map<String, dynamic>;
+              final aTime = aData['lastMessageTime'] as Timestamp?;
+              final bTime = bData['lastMessageTime'] as Timestamp?;
 
-              // Find other user ID
-              final otherUserId = participants.keys.firstWhere(
-                (key) => key != _currentUserId,
-                orElse: () => '',
-              );
+              if (aTime == null && bTime == null) return 0;
+              if (aTime == null) return 1;
+              if (bTime == null) return -1;
 
-              if (otherUserId.isNotEmpty) {
-                _precacheUserData(otherUserId);
-              }
-            }
+              return bTime.compareTo(aTime);
+            });
 
-            return ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: chatDocs.length,
-              itemBuilder: (context, index) {
-                final chatData = chatDocs[index].data() as Map<String, dynamic>;
-                final participants = chatData['participants'] ?? {};
-                final users = chatData['users'] ?? {};
-                final lastMessage = chatData['lastMessage'] ?? '';
-                final timestamp = chatData['lastMessageTime']?.toDate();
-
-                // Get the other user's information
-                final otherUserId = participants.keys.firstWhere(
-                  (key) => key != _currentUserId,
-                  orElse: () => '',
-                );
-
-                if (otherUserId.isEmpty) {
-                  return const SizedBox.shrink();
+            return FutureBuilder(
+              future: _precacheAllUserData(chatDocs),
+              builder: (context, precacheSnapshot) {
+                if (precacheSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 }
 
-                final name = users[otherUserId]?['name'] ?? 'Unknown';
+                return ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: chatDocs.length,
+                  itemBuilder: (context, index) {
+                    final chatData =
+                        chatDocs[index].data() as Map<String, dynamic>;
+                    final participants = chatData['participants'] ?? {};
+                    final users = chatData['users'] ?? {};
+                    final lastMessage = chatData['lastMessage'] ?? '';
+                    final timestamp = chatData['lastMessageTime']?.toDate();
 
-                return ChatListItem(
-                  // Now using the separated widget
-                  userId: otherUserId,
-                  name: name,
-                  lastMessage: lastMessage,
-                  timestamp: timestamp,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UserChatScreen(
-                          userId: otherUserId,
-                          userName: name,
-                        ),
-                      ),
-                    ).then((_) => _refreshChats());
+                    // Get the other user's information
+                    final otherUserId = participants.keys.firstWhere(
+                      (key) => key != _currentUserId,
+                      orElse: () => '',
+                    );
+
+                    if (otherUserId.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+
+                    // Get name from users map in chat document or fetch from user collection
+                    String name = users[otherUserId]?['name'] ?? 'Unknown';
+
+                    // If name is unknown, try to get it from cache or fetch it
+                    if (name == 'Unknown' &&
+                        _userCache.containsKey(otherUserId)) {
+                      name = _userCache[otherUserId]!['name'] ?? 'Unknown';
+                    }
+
+                    return ChatListItem(
+                      userId: otherUserId,
+                      name: name,
+                      lastMessage: lastMessage,
+                      timestamp: timestamp,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserChatScreen(
+                              userId: otherUserId,
+                              userName: name,
+                            ),
+                          ),
+                        ).then((_) => _refreshChats());
+                      },
+                      currentUserId: _currentUserId!,
+                      chatId: chatDocs[index].id,
+                      isRead:
+                          chatData['lastMessageSenderId'] == _currentUserId ||
+                              (chatData['readBy'] != null &&
+                                  chatData['readBy'][_currentUserId] == true),
+                    );
                   },
-                  currentUserId: _currentUserId!,
-                  chatId: chatDocs[index].id,
-                  isRead: chatData['lastMessageSenderId'] == _currentUserId ||
-                      (chatData['readBy'] != null &&
-                          chatData['readBy'][_currentUserId] == true),
                 );
               },
             );
@@ -160,5 +197,27 @@ class _ChatListState extends State<ChatList> {
         ),
       ),
     );
+  }
+
+  Future<void> _precacheAllUserData(
+      List<QueryDocumentSnapshot> chatDocs) async {
+    final futures = <Future>[];
+
+    for (final doc in chatDocs) {
+      final chatData = doc.data() as Map<String, dynamic>;
+      final participants = chatData['participants'] ?? {};
+
+      // Find other user ID
+      final otherUserId = participants.keys.firstWhere(
+        (key) => key != _currentUserId,
+        orElse: () => '',
+      );
+
+      if (otherUserId.isNotEmpty) {
+        futures.add(_getUserData(otherUserId));
+      }
+    }
+
+    await Future.wait(futures);
   }
 }
