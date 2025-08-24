@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:chatspot/services/chat_cache_service.dart';
 import 'package:flutter/material.dart';
 
 class MessageServices {
@@ -57,6 +58,14 @@ class MessageServices {
           SetOptions(merge: true));
 
       await batch.commit();
+
+      // Update cache optimistically
+      ChatCacheService().updateChatInCache(
+        chatId,
+        lastMessage: message,
+        lastMessageTime: DateTime.now(),
+        lastMessageSenderId: currentUserId,
+      );
     } catch (e) {
       print("Error sending message: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -122,6 +131,14 @@ class MessageServices {
           SetOptions(merge: true));
 
       await batch.commit();
+
+      // Update cache optimistically
+      ChatCacheService().updateChatInCache(
+        chatId,
+        lastMessage: '[Photo]',
+        lastMessageTime: DateTime.now(),
+        lastMessageSenderId: currentUserId,
+      );
     } catch (e) {
       debugPrint('Error sending image message: $e');
       ScaffoldMessenger.of(context).showSnackBar(
