@@ -111,16 +111,6 @@ class _FriendListScreenState extends State<FriendListScreen>
             onPressed: _refreshData,
             tooltip: 'Refresh',
           ),
-          IconButton(
-            icon: Icon(Icons.bug_report),
-            onPressed: () async {
-              await FriendRequestDebugService.printDebugInfo();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Debug info printed to console')),
-              );
-            },
-            tooltip: 'Debug Friend Requests',
-          ),
         ],
         bottom: TabBar(
           controller: _tabController,
