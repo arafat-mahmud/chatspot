@@ -19,6 +19,10 @@ class _FriendListScreenState extends State<FriendListScreen>
   late TabController _tabController;
   int _refreshKey = 0;
 
+  // Search functionality
+  TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +35,13 @@ class _FriendListScreenState extends State<FriendListScreen>
     if (_tabController.index == 1) {
       FriendNotificationService.markAllRequestsAsSeen();
     }
+
+    // Add listener for search updates
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
   }
 
   void _handleTabSelection() {
@@ -74,6 +85,7 @@ class _FriendListScreenState extends State<FriendListScreen>
   void dispose() {
     _tabController.removeListener(_handleTabSelection);
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -205,9 +217,20 @@ class _FriendListScreenState extends State<FriendListScreen>
           );
         }
 
-        final friends = snapshot.data ?? [];
+        final allFriends = snapshot.data ?? [];
 
-        if (friends.isEmpty) {
+        // Apply search filtering
+        final List<Map<String, dynamic>> filteredFriends = _searchQuery.isEmpty
+            ? allFriends
+            : allFriends.where((friend) {
+                final name = (friend['name'] ?? '').toLowerCase();
+                final username = (friend['username'] ?? '').toLowerCase();
+                return name.contains(_searchQuery) ||
+                    username.contains(_searchQuery);
+              }).toList();
+
+        // Show empty state when there are no friends at all
+        if (allFriends.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -238,12 +261,101 @@ class _FriendListScreenState extends State<FriendListScreen>
           );
         }
 
-        return ListView.builder(
-          itemCount: friends.length,
-          itemBuilder: (context, index) {
-            final friend = friends[index];
-            return _buildFriendTile(friend);
-          },
+        return Column(
+          children: [
+            // Search bar
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _searchController,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: 'Search friends by name or username...',
+                      prefixIcon: Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                // Hide keyboard when clearing search
+                                FocusScope.of(context).unfocus();
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(vertical: 12.0),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value.toLowerCase();
+                      });
+                    },
+                  ),
+                  if (_searchQuery.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0, left: 8.0),
+                      child: Text(
+                        'Found ${filteredFriends.length} friend${filteredFriends.length != 1 ? 's' : ''}',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // Show message when search has no results
+            if (_searchQuery.isNotEmpty && filteredFriends.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.search_off,
+                        size: 64,
+                        color: Colors.grey,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'No matching friends found',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Try a different search term',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Friend list
+            if (filteredFriends.isNotEmpty)
+              Expanded(
+                child: ListView.builder(
+                  itemCount: filteredFriends.length,
+                  itemBuilder: (context, index) {
+                    final friend = filteredFriends[index];
+                    return _buildFriendTile(friend);
+                  },
+                ),
+              ),
+          ],
         );
       },
     );
