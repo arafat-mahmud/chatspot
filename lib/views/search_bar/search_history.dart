@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../chat/chat_main/image_handler.dart';
 
 class SearchHistory {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -170,28 +171,36 @@ class SearchHistory {
         ...history.map((user) {
           print('Displaying user in history: ${user['userId']}');
           return ListTile(
-            leading: CircleAvatar(
-              radius: 24,
-              child: user["profilePictureUrl"]?.isNotEmpty == true
-                  ? CachedNetworkImage(
-                      imageUrl: user["profilePictureUrl"],
-                      imageBuilder: (context, imageProvider) => CircleAvatar(
-                        backgroundImage: imageProvider,
-                        radius: 24,
-                      ),
-                      placeholder: (context, url) => CircleAvatar(
+            leading: GestureDetector(
+              onTap: user["profilePictureUrl"]?.isNotEmpty == true
+                  ? () {
+                      ImageHandler.showFullScreenImage(
+                          context, user["profilePictureUrl"]);
+                    }
+                  : null,
+              child: CircleAvatar(
+                radius: 24,
+                child: user["profilePictureUrl"]?.isNotEmpty == true
+                    ? CachedNetworkImage(
+                        imageUrl: user["profilePictureUrl"],
+                        imageBuilder: (context, imageProvider) => CircleAvatar(
+                          backgroundImage: imageProvider,
+                          radius: 24,
+                        ),
+                        placeholder: (context, url) => CircleAvatar(
+                          child: Text(user["name"][0].toUpperCase()),
+                          radius: 24,
+                        ),
+                        errorWidget: (context, url, error) => CircleAvatar(
+                          child: Text(user["name"][0].toUpperCase()),
+                          radius: 24,
+                        ),
+                      )
+                    : CircleAvatar(
                         child: Text(user["name"][0].toUpperCase()),
                         radius: 24,
                       ),
-                      errorWidget: (context, url, error) => CircleAvatar(
-                        child: Text(user["name"][0].toUpperCase()),
-                        radius: 24,
-                      ),
-                    )
-                  : CircleAvatar(
-                      child: Text(user["name"][0].toUpperCase()),
-                      radius: 24,
-                    ),
+              ),
             ),
             title: Text(user["name"]),
             subtitle: Text(user["username"]),

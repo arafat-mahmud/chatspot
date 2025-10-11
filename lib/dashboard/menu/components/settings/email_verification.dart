@@ -36,14 +36,15 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
 
         // Get the creation date from Firebase Auth or Firestore
         DateTime joinedDate = user.metadata.creationTime ?? DateTime.now();
-        
+
         // If you store a custom join date in Firestore, you could use that instead:
         // DateTime joinedDate = userDoc['createdAt']?.toDate() ?? user.metadata.creationTime ?? DateTime.now();
 
         setState(() {
           _userEmail =
               userDoc.exists ? (userDoc['email'] ?? '') : (user.email ?? '');
-          _joinedDate = DateFormat('MMMM d, y').format(joinedDate); // Format the date
+          _joinedDate =
+              DateFormat('MMMM d, y').format(joinedDate); // Format the date
           _isLoading = false;
         });
       } else {
@@ -64,9 +65,8 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     return ValueListenableBuilder<ThemeData>(
       valueListenable: ThemeService.themeNotifier,
       builder: (context, theme, child) {
-        final textColor = theme.brightness == Brightness.dark 
-            ? Colors.white 
-            : Colors.black;
+        final textColor =
+            theme.brightness == Brightness.dark ? Colors.white : Colors.black;
         final secondaryTextColor = theme.brightness == Brightness.dark
             ? Colors.white.withOpacity(0.7)
             : Colors.black.withOpacity(0.6);
@@ -152,7 +152,9 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                             Row(
                               children: [
                                 Icon(
-                                  _isVerified ? Icons.check_circle : Icons.error,
+                                  _isVerified
+                                      ? Icons.check_circle
+                                      : Icons.error,
                                   color: iconColor,
                                   size: 22,
                                 ),

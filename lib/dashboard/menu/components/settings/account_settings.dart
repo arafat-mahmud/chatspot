@@ -16,7 +16,8 @@ class AccountSettingsPage extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => EmailVerificationPage()),
+                MaterialPageRoute(
+                    builder: (context) => EmailVerificationPage()),
               );
             },
           ),
@@ -40,4 +41,4 @@ class AccountSettingsPage extends StatelessWidget {
       ),
     );
   }
-} 
+}

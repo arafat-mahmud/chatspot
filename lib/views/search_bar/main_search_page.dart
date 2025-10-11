@@ -5,6 +5,7 @@ import 'package:chatspot/services/chat_initialization_service.dart';
 import '../chat/chat_main/main_chat_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'search_history.dart';
+import '../chat/chat_main/image_handler.dart';
 
 class SearchPage extends StatefulWidget {
   @override
@@ -302,36 +303,47 @@ class _SearchPageState extends State<SearchPage> {
                       itemCount: _results.length,
                       itemBuilder: (context, index) {
                         return ListTile(
-                          leading: CircleAvatar(
-                            radius: 24,
-                            child: _results[index]["profilePictureUrl"]
+                          leading: GestureDetector(
+                            onTap: _results[index]["profilePictureUrl"]
                                         ?.isNotEmpty ==
                                     true
-                                ? CachedNetworkImage(
-                                    imageUrl: _results[index]
-                                        ["profilePictureUrl"],
-                                    imageBuilder: (context, imageProvider) =>
-                                        CircleAvatar(
-                                      backgroundImage: imageProvider,
-                                      radius: 24,
-                                    ),
-                                    placeholder: (context, url) => CircleAvatar(
+                                ? () {
+                                    ImageHandler.showFullScreenImage(context,
+                                        _results[index]["profilePictureUrl"]);
+                                  }
+                                : null,
+                            child: CircleAvatar(
+                              radius: 24,
+                              child: _results[index]["profilePictureUrl"]
+                                          ?.isNotEmpty ==
+                                      true
+                                  ? CachedNetworkImage(
+                                      imageUrl: _results[index]
+                                          ["profilePictureUrl"],
+                                      imageBuilder: (context, imageProvider) =>
+                                          CircleAvatar(
+                                        backgroundImage: imageProvider,
+                                        radius: 24,
+                                      ),
+                                      placeholder: (context, url) =>
+                                          CircleAvatar(
+                                        child: Text(_results[index]["name"][0]
+                                            .toUpperCase()),
+                                        radius: 24,
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          CircleAvatar(
+                                        child: Text(_results[index]["name"][0]
+                                            .toUpperCase()),
+                                        radius: 24,
+                                      ),
+                                    )
+                                  : CircleAvatar(
                                       child: Text(_results[index]["name"][0]
                                           .toUpperCase()),
                                       radius: 24,
                                     ),
-                                    errorWidget: (context, url, error) =>
-                                        CircleAvatar(
-                                      child: Text(_results[index]["name"][0]
-                                          .toUpperCase()),
-                                      radius: 24,
-                                    ),
-                                  )
-                                : CircleAvatar(
-                                    child: Text(_results[index]["name"][0]
-                                        .toUpperCase()),
-                                    radius: 24,
-                                  ),
+                            ),
                           ),
                           title: Text(_results[index]["name"]),
                           subtitle: Text(_results[index]["username"]),

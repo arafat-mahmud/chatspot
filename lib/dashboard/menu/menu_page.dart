@@ -12,6 +12,7 @@ import '../../views/auth/signin.dart';
 import '../../services/cloudinary_service.dart';
 import '../../views/friends/friend_list_screen.dart';
 import '../../services/friend/friend_notification_service.dart';
+import '../../views/chat/chat_main/image_handler.dart';
 
 class MenuPage extends StatelessWidget {
   final CloudinaryService _cloudinaryService = CloudinaryService();
@@ -140,10 +141,16 @@ class MenuPage extends StatelessWidget {
                     Stack(
                       children: [
                         profilePictureUrl != null
-                            ? CircleAvatar(
-                                radius: 29,
-                                backgroundImage:
-                                    NetworkImage(profilePictureUrl),
+                            ? GestureDetector(
+                                onTap: () {
+                                  ImageHandler.showFullScreenImage(
+                                      context, profilePictureUrl);
+                                },
+                                child: CircleAvatar(
+                                  radius: 29,
+                                  backgroundImage:
+                                      NetworkImage(profilePictureUrl),
+                                ),
                               )
                             : Icon(
                                 Icons.account_circle,
@@ -232,36 +239,7 @@ class MenuPage extends StatelessWidget {
               final pendingCount = snapshot.data ?? 0;
 
               return ListTile(
-                leading: Stack(
-                  children: [
-                    Icon(Icons.people),
-                    if (pendingCount > 0)
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: Container(
-                          padding: EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          constraints: BoxConstraints(
-                            minWidth: 16,
-                            minHeight: 16,
-                          ),
-                          child: Text(
-                            '$pendingCount',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                leading: Icon(Icons.people),
                 title: Text('Friends'),
                 trailing: pendingCount > 0
                     ? Container(

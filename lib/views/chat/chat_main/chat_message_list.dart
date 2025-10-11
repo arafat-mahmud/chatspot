@@ -156,18 +156,28 @@ class ChatMessageList extends StatelessWidget {
                                     Padding(
                                       padding: const EdgeInsets.only(
                                           left: 8, right: 6.0, bottom: 0),
-                                      child: CircleAvatar(
-                                        radius: 16,
-                                        backgroundImage:
-                                            profilePictureUrl.isNotEmpty
-                                                ? CachedNetworkImageProvider(
-                                                    profilePictureUrl)
-                                                : null,
-                                        child: profilePictureUrl.isEmpty
-                                            ? Text(senderName.isNotEmpty
-                                                ? senderName[0].toUpperCase()
-                                                : '')
+                                      child: GestureDetector(
+                                        onTap: profilePictureUrl.isNotEmpty
+                                            ? () {
+                                                ImageHandler
+                                                    .showFullScreenImage(
+                                                        context,
+                                                        profilePictureUrl);
+                                              }
                                             : null,
+                                        child: CircleAvatar(
+                                          radius: 16,
+                                          backgroundImage:
+                                              profilePictureUrl.isNotEmpty
+                                                  ? CachedNetworkImageProvider(
+                                                      profilePictureUrl)
+                                                  : null,
+                                          child: profilePictureUrl.isEmpty
+                                              ? Text(senderName.isNotEmpty
+                                                  ? senderName[0].toUpperCase()
+                                                  : '')
+                                              : null,
+                                        ),
                                       ),
                                     ),
                                   if (isImage)
@@ -238,24 +248,32 @@ class ChatMessageList extends StatelessWidget {
                                               ),
                                             ),
                                             if (receiverProfilePic.isNotEmpty)
-                                              Container(
-                                                width: 12,
-                                                height: 12,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  image: DecorationImage(
-                                                    image: NetworkImage(
-                                                        receiverProfilePic),
-                                                    fit: BoxFit.cover,
-                                                  ),
-                                                  border: Border.all(
-                                                    color: theme.brightness ==
-                                                            Brightness.dark
-                                                        ? Colors.grey[400] ??
-                                                            Colors.grey
-                                                        : Colors.grey[200] ??
-                                                            Colors.grey,
-                                                    width: 1,
+                                              GestureDetector(
+                                                onTap: () {
+                                                  ImageHandler
+                                                      .showFullScreenImage(
+                                                          context,
+                                                          receiverProfilePic);
+                                                },
+                                                child: Container(
+                                                  width: 12,
+                                                  height: 12,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    image: DecorationImage(
+                                                      image: NetworkImage(
+                                                          receiverProfilePic),
+                                                      fit: BoxFit.cover,
+                                                    ),
+                                                    border: Border.all(
+                                                      color: theme.brightness ==
+                                                              Brightness.dark
+                                                          ? Colors.grey[400] ??
+                                                              Colors.grey
+                                                          : Colors.grey[200] ??
+                                                              Colors.grey,
+                                                      width: 1,
+                                                    ),
                                                   ),
                                                 ),
                                               )

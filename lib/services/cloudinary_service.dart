@@ -5,8 +5,8 @@ class CloudinaryService {
 
   CloudinaryService()
       : cloudinary = CloudinaryPublic(
-          'draqhisid',  // Your cloud name
-          'chatspot',   // Default upload preset
+          'draqhisid', // Your cloud name
+          'chatspot', // Default upload preset
         );
 
   Future<String> uploadCameraPicture(String filePath) async {
@@ -29,7 +29,6 @@ class CloudinaryService {
       folder: "chatspot_profile_pictures", // Profile-specific folder
     );
   }
-
 
   Future<String> _uploadToCloudinary(
     String filePath, {

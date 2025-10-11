@@ -157,10 +157,16 @@ class _UserChatScreenState extends State<UserChatScreen> {
               child: Row(
                 children: [
                   _profilePictureUrl?.isNotEmpty == true
-                      ? CircleAvatar(
-                          radius: 16,
-                          backgroundImage:
-                              CachedNetworkImageProvider(_profilePictureUrl!),
+                      ? GestureDetector(
+                          onTap: () {
+                            ImageHandler.showFullScreenImage(
+                                context, _profilePictureUrl!);
+                          },
+                          child: CircleAvatar(
+                            radius: 16,
+                            backgroundImage:
+                                CachedNetworkImageProvider(_profilePictureUrl!),
+                          ),
                         )
                       : CircleAvatar(
                           radius: 16,

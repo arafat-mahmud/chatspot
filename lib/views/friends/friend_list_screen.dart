@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatspot/services/friend/friend_request_service.dart';
 import 'package:chatspot/services/friend/friend_request_debug_service.dart';
+import 'package:chatspot/services/friend/friend_notification_service.dart';
 import 'package:chatspot/views/chat/chat_main/main_chat_screen.dart';
 import 'package:chatspot/services/chat_initialization_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../chat/chat_main/image_handler.dart';
 
 class FriendListScreen extends StatefulWidget {
   @override
@@ -71,7 +73,39 @@ class _FriendListScreenState extends State<FriendListScreen>
           controller: _tabController,
           tabs: [
             Tab(text: 'Friends'),
-            Tab(text: 'Requests'),
+            StreamBuilder<int>(
+              stream: FriendNotificationService.getPendingRequestCount(),
+              builder: (context, snapshot) {
+                final pendingCount = snapshot.data ?? 0;
+                return Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Requests'),
+                      if (pendingCount > 0) ...[
+                        SizedBox(width: 8),
+                        Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$pendingCount',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
           ],
           labelColor: theme.appBarTheme.titleTextStyle?.color ?? Colors.white,
           unselectedLabelColor: Colors.grey[300],
@@ -184,18 +218,30 @@ class _FriendListScreenState extends State<FriendListScreen>
 
   Widget _buildFriendTile(Map<String, dynamic> friend) {
     return ListTile(
-      leading: CircleAvatar(
-        radius: 24,
-        backgroundImage: friend['profilePic']?.isNotEmpty == true
-            ? CachedNetworkImageProvider(friend['profilePic'])
+      leading: GestureDetector(
+        onTap: friend['profilePic']?.isNotEmpty == true
+            ? () {
+                ImageHandler.showFullScreenImage(context, friend['profilePic']);
+              }
             : null,
-        child: friend['profilePic']?.isEmpty != false
-            ? Text(
-                friend['name']?.isNotEmpty == true
-                    ? friend['name'][0].toUpperCase()
-                    : '?',
-              )
-            : null,
+        child: CircleAvatar(
+          radius: 24,
+          backgroundImage: friend['profilePic']?.isNotEmpty == true
+              ? CachedNetworkImageProvider(friend['profilePic'])
+              : null,
+          backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+          child: friend['profilePic']?.isEmpty != false
+              ? Text(
+                  friend['name']?.isNotEmpty == true
+                      ? friend['name'][0].toUpperCase()
+                      : '?',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                )
+              : null,
+        ),
       ),
       title: Text(friend['name'] ?? 'Unknown'),
       subtitle: Text(friend['username'] ?? ''),
@@ -329,18 +375,32 @@ class _FriendListScreenState extends State<FriendListScreen>
         padding: EdgeInsets.all(8),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundImage: request['senderProfilePic']?.isNotEmpty == true
-                  ? CachedNetworkImageProvider(request['senderProfilePic'])
+            GestureDetector(
+              onTap: request['senderProfilePic']?.isNotEmpty == true
+                  ? () {
+                      ImageHandler.showFullScreenImage(
+                          context, request['senderProfilePic']);
+                    }
                   : null,
-              child: request['senderProfilePic']?.isEmpty != false
-                  ? Text(
-                      request['senderName']?.isNotEmpty == true
-                          ? request['senderName'][0].toUpperCase()
-                          : '?',
-                    )
-                  : null,
+              child: CircleAvatar(
+                radius: 24,
+                backgroundImage: request['senderProfilePic']?.isNotEmpty == true
+                    ? CachedNetworkImageProvider(request['senderProfilePic'])
+                    : null,
+                backgroundColor:
+                    Theme.of(context).primaryColor.withOpacity(0.1),
+                child: request['senderProfilePic']?.isEmpty != false
+                    ? Text(
+                        request['senderName']?.isNotEmpty == true
+                            ? request['senderName'][0].toUpperCase()
+                            : '?',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      )
+                    : null,
+              ),
             ),
             SizedBox(width: 12),
             Expanded(

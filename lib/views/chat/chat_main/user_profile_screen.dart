@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:flutter/services.dart';
+import 'image_handler.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final String userId;
@@ -77,15 +78,23 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundImage: profilePictureUrl.isNotEmpty
-                          ? CachedNetworkImageProvider(profilePictureUrl)
+                    GestureDetector(
+                      onTap: profilePictureUrl.isNotEmpty
+                          ? () {
+                              ImageHandler.showFullScreenImage(
+                                  context, profilePictureUrl);
+                            }
                           : null,
-                      child: profilePictureUrl.isEmpty
-                          ? Text(name.isNotEmpty ? name[0].toUpperCase() : '',
-                              style: TextStyle(fontSize: 24))
-                          : null,
+                      child: CircleAvatar(
+                        radius: 40,
+                        backgroundImage: profilePictureUrl.isNotEmpty
+                            ? CachedNetworkImageProvider(profilePictureUrl)
+                            : null,
+                        child: profilePictureUrl.isEmpty
+                            ? Text(name.isNotEmpty ? name[0].toUpperCase() : '',
+                                style: TextStyle(fontSize: 24))
+                            : null,
+                      ),
                     ),
                     SizedBox(height: 16),
                     Text(

@@ -170,13 +170,42 @@ class FriendRequestService {
         .where('receiverId', isEqualTo: currentUser.uid)
         .where('status', isEqualTo: 'pending')
         .snapshots()
-        .map((snapshot) {
+        .asyncMap((snapshot) async {
       try {
-        List<Map<String, dynamic>> requests = snapshot.docs.map((doc) {
+        List<Map<String, dynamic>> requests = [];
+
+        for (var doc in snapshot.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['id'] = doc.id;
-          return data;
-        }).toList();
+
+          // Enhance with fresh profile picture if missing or empty
+          if (data['senderProfilePic'] == null ||
+              data['senderProfilePic'] == '') {
+            try {
+              final senderDoc = await _firestore
+                  .collection('users')
+                  .doc(data['senderId'])
+                  .get();
+
+              if (senderDoc.exists) {
+                final senderData = senderDoc.data()!;
+                data['senderProfilePic'] =
+                    senderData['profilePictureUrl'] ?? '';
+
+                // Also update the name and username if they might have changed
+                data['senderName'] =
+                    senderData['name'] ?? data['senderName'] ?? 'Unknown';
+                data['senderUsername'] =
+                    senderData['username'] ?? data['senderUsername'] ?? '';
+              }
+            } catch (e) {
+              print(
+                  'Error fetching sender profile for ${data['senderId']}: $e');
+            }
+          }
+
+          requests.add(data);
+        }
 
         // Sort by timestamp if available, with null safety
         requests.sort((a, b) {
@@ -211,7 +240,7 @@ class FriendRequestService {
         .collection('friend_requests')
         .where('receiverId', isEqualTo: userId)
         .snapshots()
-        .map((snapshot) {
+        .asyncMap((snapshot) async {
       try {
         List<Map<String, dynamic>> requests = [];
 
@@ -221,6 +250,33 @@ class FriendRequestService {
             // Filter for pending status manually
             if (data['status'] == 'pending') {
               data['id'] = doc.id;
+
+              // Enhance with fresh profile picture if missing or empty
+              if (data['senderProfilePic'] == null ||
+                  data['senderProfilePic'] == '') {
+                try {
+                  final senderDoc = await _firestore
+                      .collection('users')
+                      .doc(data['senderId'])
+                      .get();
+
+                  if (senderDoc.exists) {
+                    final senderData = senderDoc.data()!;
+                    data['senderProfilePic'] =
+                        senderData['profilePictureUrl'] ?? '';
+
+                    // Also update the name and username if they might have changed
+                    data['senderName'] =
+                        senderData['name'] ?? data['senderName'] ?? 'Unknown';
+                    data['senderUsername'] =
+                        senderData['username'] ?? data['senderUsername'] ?? '';
+                  }
+                } catch (e) {
+                  print(
+                      'Error fetching sender profile for ${data['senderId']}: $e');
+                }
+              }
+
               requests.add(data);
             }
           } catch (e) {
@@ -251,7 +307,7 @@ class FriendRequestService {
         .where('users', arrayContains: currentUser.uid)
         .where('status', isEqualTo: 'accepted')
         .snapshots()
-        .map((snapshot) {
+        .asyncMap((snapshot) async {
       try {
         List<Map<String, dynamic>> friends = [];
 
@@ -268,17 +324,50 @@ class FriendRequestService {
               orElse: () => '',
             );
 
-            if (otherUserId.isNotEmpty &&
-                userDetails.containsKey(otherUserId)) {
-              final otherUserData =
-                  userDetails[otherUserId] as Map<String, dynamic>;
-              friends.add({
+            if (otherUserId.isNotEmpty) {
+              Map<String, dynamic> friendData = {
                 'userId': otherUserId,
-                'name': otherUserData['name'] ?? 'Unknown',
-                'username': otherUserData['username'] ?? '',
-                'profilePic': otherUserData['profilePic'] ?? '',
                 'friendshipId': doc.id,
-              });
+              };
+
+              // Try to get data from userDetails first
+              if (userDetails.containsKey(otherUserId)) {
+                final otherUserData =
+                    userDetails[otherUserId] as Map<String, dynamic>;
+                friendData['name'] = otherUserData['name'] ?? 'Unknown';
+                friendData['username'] = otherUserData['username'] ?? '';
+                friendData['profilePic'] = otherUserData['profilePic'] ?? '';
+              }
+
+              // If profile picture is missing or empty, fetch fresh data
+              if (friendData['profilePic'] == null ||
+                  friendData['profilePic'] == '') {
+                try {
+                  final userDoc = await _firestore
+                      .collection('users')
+                      .doc(otherUserId)
+                      .get();
+
+                  if (userDoc.exists) {
+                    final userData = userDoc.data()!;
+                    friendData['profilePic'] =
+                        userData['profilePictureUrl'] ?? '';
+
+                    // Also update name and username if not already set
+                    if (friendData['name'] == 'Unknown' ||
+                        friendData['name'] == '') {
+                      friendData['name'] = userData['name'] ?? 'Unknown';
+                    }
+                    if (friendData['username'] == '') {
+                      friendData['username'] = userData['username'] ?? '';
+                    }
+                  }
+                } catch (e) {
+                  print('Error fetching fresh user data for $otherUserId: $e');
+                }
+              }
+
+              friends.add(friendData);
             }
           } catch (e) {
             print('Error processing friendship document ${doc.id}: $e');
