@@ -397,7 +397,7 @@ class _SignInPageState extends State<SignInPage> {
                         'Sign in',
                         style: TextStyle(
                           fontSize: 16.0,
-                          color: Colors.white,
+                          color: const Color.fromARGB(255, 0, 0, 0),
                           fontFamily: 'Chivo',
                         ),
                       ),
