@@ -17,7 +17,8 @@ class CustomDrawer extends StatelessWidget {
 
   CustomDrawer({super.key});
 
-  Future<void> _uploadProfilePicture(BuildContext context, String userId) async {
+  Future<void> _uploadProfilePicture(
+      BuildContext context, String userId) async {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext bc) {
@@ -48,7 +49,7 @@ class CustomDrawer extends StatelessWidget {
   }
 
   Future<void> _pickImage(
-    ImageSource source, BuildContext context, String userId) async {
+      ImageSource source, BuildContext context, String userId) async {
     try {
       final XFile? image = await _picker.pickImage(source: source);
       if (image != null) {
@@ -58,7 +59,8 @@ class CustomDrawer extends StatelessWidget {
           SnackBar(content: Text('Uploading image...')),
         );
 
-        final imageUrl = await _cloudinaryService.uploadProfilePicture(image.path);
+        final imageUrl =
+            await _cloudinaryService.uploadProfilePicture(image.path);
 
         await FirebaseFirestore.instance
             .collection('users')
@@ -81,6 +83,7 @@ class CustomDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     User? user = FirebaseAuth.instance.currentUser;
+    final theme = Theme.of(context);
 
     return Drawer(
       child: ListView(
@@ -108,7 +111,7 @@ class CustomDrawer extends StatelessWidget {
 
               return Container(
                 padding: EdgeInsets.all(16),
-                color: Colors.blue,
+                color: theme.primaryColor,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -119,29 +122,33 @@ class CustomDrawer extends StatelessWidget {
                         profilePictureUrl != null
                             ? CircleAvatar(
                                 radius: 29,
-                                backgroundImage: NetworkImage(profilePictureUrl),
+                                backgroundImage:
+                                    NetworkImage(profilePictureUrl),
                               )
                             : Icon(
                                 Icons.account_circle,
                                 size: 65,
-                                color: Colors.white,
+                                color: theme.iconTheme.color,
                               ),
                         if (user != null)
                           Positioned(
                             bottom: 0,
                             right: 0,
                             child: GestureDetector(
-                              onTap: () => _uploadProfilePicture(context, user.uid),
+                              onTap: () =>
+                                  _uploadProfilePicture(context, user.uid),
                               child: Container(
                                 padding: EdgeInsets.all(4),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue[800],
+                                  color: theme.brightness == Brightness.dark
+                                      ? Colors.grey[700]
+                                      : Colors.grey[300],
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
                                   Icons.camera_alt,
                                   size: 14,
-                                  color: Colors.white,
+                                  color: theme.iconTheme.color,
                                 ),
                               ),
                             ),
@@ -152,7 +159,7 @@ class CustomDrawer extends StatelessWidget {
                     Text(
                       userData['name'] ?? 'User',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: theme.textTheme.titleLarge?.color,
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
@@ -165,7 +172,7 @@ class CustomDrawer extends StatelessWidget {
                         Text(
                           username,
                           style: TextStyle(
-                            color: Colors.white,
+                            color: theme.textTheme.bodyMedium?.color,
                             fontSize: 12,
                           ),
                         ),
@@ -181,7 +188,7 @@ class CustomDrawer extends StatelessWidget {
                           },
                           child: Icon(
                             Icons.copy,
-                            color: Colors.white,
+                            color: theme.iconTheme.color,
                             size: 16,
                           ),
                         ),
@@ -210,7 +217,8 @@ class CustomDrawer extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => SettingsPage(
-                    setTheme: ThemeService.changeTheme, // Updated to use ThemeService
+                    setTheme:
+                        ThemeService.changeTheme, // Updated to use ThemeService
                   ),
                 ),
               );

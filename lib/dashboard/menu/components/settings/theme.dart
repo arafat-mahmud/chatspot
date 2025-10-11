@@ -10,27 +10,71 @@ class ThemeService {
   static String? _currentUserId;
   static ValueNotifier<ThemeData> themeNotifier = ValueNotifier(_lightTheme);
 
-  // Custom light theme
+  // Custom light theme - using white as primary
   static final ThemeData _lightTheme = ThemeData(
     brightness: Brightness.light,
-    primaryColor: Colors.blue,
+    primaryColor: Colors.white,
     scaffoldBackgroundColor: Colors.white,
     cardColor: Colors.white,
+    appBarTheme: AppBarTheme(
+      backgroundColor: Colors.white,
+      foregroundColor: Colors.black,
+      iconTheme: IconThemeData(color: Colors.black),
+      titleTextStyle: TextStyle(
+        color: Colors.black,
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+      ),
+      elevation: 1,
+    ),
+    iconTheme: IconThemeData(color: Colors.black),
     textTheme: TextTheme(
       bodyLarge: TextStyle(color: Colors.black87),
-    // Add other light theme properties
-  ));
+      bodyMedium: TextStyle(color: Colors.black87),
+      titleLarge: TextStyle(color: Colors.black),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        side: BorderSide(color: Colors.grey),
+      ),
+    ),
+    dividerColor: Colors.grey[300],
+  );
 
-  // Custom dark theme (ensuring good contrast)
+  // Custom dark theme
   static final ThemeData _darkTheme = ThemeData(
     brightness: Brightness.dark,
-    primaryColor: Colors.blue[700],
+    primaryColor: Colors.grey[900],
     scaffoldBackgroundColor: Colors.grey[900],
     cardColor: Colors.grey[800],
+    appBarTheme: AppBarTheme(
+      backgroundColor: Colors.grey[900],
+      foregroundColor: Colors.white,
+      iconTheme: IconThemeData(color: Colors.white),
+      titleTextStyle: TextStyle(
+        color: Colors.white,
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+      ),
+      elevation: 1,
+    ),
+    iconTheme: IconThemeData(color: Colors.white),
     textTheme: TextTheme(
       bodyLarge: TextStyle(color: Colors.white.withOpacity(0.9)),
-    // Add other dark theme properties
-  ));
+      bodyMedium: TextStyle(color: Colors.white.withOpacity(0.9)),
+      titleLarge: TextStyle(color: Colors.white),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.grey[800],
+        foregroundColor: Colors.white,
+        side: BorderSide(color: Colors.grey[600]!),
+      ),
+    ),
+    dividerColor: Colors.grey[600],
+  );
 
   // Initialize theme service
   static Future<void> init() async {
@@ -87,7 +131,8 @@ class ThemeService {
   static Future<String?> _getStoredThemeName() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userThemeKey = _currentUserId != null ? '${_themeKey}_$_currentUserId' : _themeKey;
+      final userThemeKey =
+          _currentUserId != null ? '${_themeKey}_$_currentUserId' : _themeKey;
       final localTheme = prefs.getString(userThemeKey);
       if (localTheme != null) return localTheme;
 
@@ -107,7 +152,8 @@ class ThemeService {
   static Future<void> _saveTheme(String themeName) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userThemeKey = _currentUserId != null ? '${_themeKey}_$_currentUserId' : _themeKey;
+      final userThemeKey =
+          _currentUserId != null ? '${_themeKey}_$_currentUserId' : _themeKey;
       await prefs.setString(userThemeKey, themeName);
 
       if (_currentUserId != null) {

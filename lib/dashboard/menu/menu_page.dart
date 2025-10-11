@@ -132,87 +132,91 @@ class MenuPage extends StatelessWidget {
 
               return Container(
                 padding: EdgeInsets.all(16),
-                color: Colors.blue,
+                color: theme.primaryColor,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(height: 20),
-                    Stack(
+                    Row(
                       children: [
-                        profilePictureUrl != null
-                            ? CircleAvatar(
-                                radius: 29,
-                                backgroundImage:
-                                    NetworkImage(profilePictureUrl),
-                              )
-                            : Icon(
-                                Icons.account_circle,
-                                size: 65,
-                                color: Colors.white,
-                              ),
-                        if (user != null)
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: GestureDetector(
-                              onTap: () =>
-                                  _uploadProfilePicture(context, user.uid),
-                              child: Container(
-                                padding: EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue[800],
-                                  shape: BoxShape.circle,
+                        Stack(
+                          children: [
+                            profilePictureUrl != null
+                                ? CircleAvatar(
+                                    radius: 29,
+                                    backgroundImage:
+                                        NetworkImage(profilePictureUrl),
+                                  )
+                                : Icon(
+                                    Icons.account_circle,
+                                    size: 65,
+                                    color: theme.iconTheme.color,
+                                  ),
+                            if (user != null)
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () =>
+                                      _uploadProfilePicture(context, user.uid),
+                                  child: Container(
+                                    padding: EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: theme.brightness == Brightness.dark
+                                          ? Colors.grey[700]
+                                          : Colors.grey[300],
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.camera_alt,
+                                      size: 14,
+                                      color: theme.iconTheme.color,
+                                    ),
+                                  ),
                                 ),
-                                child: Icon(
-                                  Icons.camera_alt,
-                                  size: 14,
-                                  color: Colors.white,
+                              ),
+                          ],
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                userData['name'] ?? 'User',
+                                style: TextStyle(
+                                  color: theme.textTheme.titleLarge?.color,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            ),
+                              SizedBox(height: 4),
+                              GestureDetector(
+                                onTap: () {
+                                  Clipboard.setData(
+                                      ClipboardData(text: username));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Username copied!'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  username,
+                                  style: TextStyle(
+                                    color: theme.textTheme.bodyMedium?.color,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
                       ],
                     ),
                     SizedBox(height: 8),
-                    Text(
-                      userData['name'] ?? 'User',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 4,
-                      children: [
-                        Text(
-                          username,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Clipboard.setData(ClipboardData(text: username));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Username copied!'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          child: Icon(
-                            Icons.copy,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               );

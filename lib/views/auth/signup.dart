@@ -231,7 +231,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           _isPasswordVisible
                               ? Icons.visibility
                               : Icons.visibility_off,
-                          color: Colors.blue,
+                          color: Theme.of(context).iconTheme.color,
                         ),
                         onPressed: () {
                           setState(() {
@@ -269,7 +269,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       _isConfirmPasswordVisible
                           ? Icons.visibility
                           : Icons.visibility_off,
-                      color: Colors.blue,
+                      color: Theme.of(context).iconTheme.color,
                     ),
                     onPressed: () {
                       setState(() {
@@ -293,7 +293,19 @@ class _SignUpPageState extends State<SignUpPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
-                  backgroundColor: Colors.blue,
+                  backgroundColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[800]
+                          : Colors.white,
+                  foregroundColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
+                  side: BorderSide(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[600]!
+                        : Colors.grey,
+                  ),
                 ),
                 onPressed: _isLoading
                     ? null

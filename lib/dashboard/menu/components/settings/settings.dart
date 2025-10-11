@@ -3,11 +3,16 @@ import 'package:flutter/material.dart';
 import '../../../../views/auth/signin.dart'; // Import the SignInPage
 import 'account_settings.dart'; // Import the AccountSettingsPage
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   final void Function(ThemeData) setTheme; // Ensure this is non-nullable
 
   SettingsPage({required this.setTheme}); // Constructor to accept the function
 
+  @override
+  _SettingsPageState createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,6 +55,16 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: Icon(Icons.palette),
             title: Text('Theme'),
+            subtitle:
+                Text(ThemeService.isDarkMode ? 'Dark Mode' : 'Light Mode'),
+            trailing: Switch(
+              value: ThemeService.isDarkMode,
+              onChanged: (value) {
+                setState(() {
+                  ThemeService.toggleTheme();
+                });
+              },
+            ),
             onTap: () {
               _showThemeDialog(context);
             },
@@ -72,40 +87,43 @@ class SettingsPage extends StatelessWidget {
   }
 
   void _showThemeDialog(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text('Select Theme'),
-        content: SingleChildScrollView(
-          child: ListBody(
-            children: <Widget>[
-              ListTile(
-                title: Text('Light'),
-                onTap: () {
-                  ThemeService.changeTheme(ThemeData.light());
-                  Navigator.of(context).pop();
-                },
-              ),
-              ListTile(
-                title: Text('Dark'),
-                onTap: () {
-                  ThemeService.changeTheme(ThemeData.dark());
-                  Navigator.of(context).pop();
-                },
-              ),
-              ListTile(
-                title: Text('System Default'),
-                onTap: () {
-                  ThemeService.changeTheme(ThemeData.fallback());
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select Theme'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                ListTile(
+                  title: Text('Light'),
+                  trailing: ThemeService.isDarkMode ? null : Icon(Icons.check),
+                  onTap: () {
+                    if (ThemeService.isDarkMode) {
+                      setState(() {
+                        ThemeService.toggleTheme();
+                      });
+                    }
+                    Navigator.of(context).pop();
+                  },
+                ),
+                ListTile(
+                  title: Text('Dark'),
+                  trailing: ThemeService.isDarkMode ? Icon(Icons.check) : null,
+                  onTap: () {
+                    if (!ThemeService.isDarkMode) {
+                      setState(() {
+                        ThemeService.toggleTheme();
+                      });
+                    }
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 }

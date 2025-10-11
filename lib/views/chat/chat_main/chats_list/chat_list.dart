@@ -76,8 +76,10 @@ class _ChatListState extends State<ChatList> {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _refreshChats,
-        color: Colors.blue,
-        backgroundColor: Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white
+            : Colors.black,
+        backgroundColor: Theme.of(context).cardColor,
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : StreamBuilder<List<ChatModel>>(

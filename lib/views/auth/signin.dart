@@ -312,7 +312,7 @@ class _SignInPageState extends State<SignInPage> {
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscureText ? Icons.visibility : Icons.visibility_off,
-                      color: Colors.blue,
+                      color: Theme.of(context).iconTheme.color,
                     ),
                     onPressed: () {
                       setState(() {
@@ -373,7 +373,19 @@ class _SignInPageState extends State<SignInPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
-                  backgroundColor: Colors.blue,
+                  backgroundColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[800]
+                          : Colors.white,
+                  foregroundColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
+                  side: BorderSide(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[600]!
+                        : Colors.grey,
+                  ),
                 ),
                 onPressed: _isLoading ? null : _signIn,
                 child: _isLoading
@@ -434,7 +446,7 @@ class _SignInPageState extends State<SignInPage> {
                 icon: Icon(
                   Icons.person_add,
                   size: 22.0,
-                  color: Colors.blue,
+                  color: Theme.of(context).iconTheme.color,
                 ),
                 label: Text(
                   'Create a New Account',
