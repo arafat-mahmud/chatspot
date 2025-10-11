@@ -113,6 +113,7 @@ class CustomDrawer extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    SizedBox(height: 20),
                     Stack(
                       children: [
                         profilePictureUrl != null
