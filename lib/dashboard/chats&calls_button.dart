@@ -1,9 +1,9 @@
-import 'package:chatspot/views/chat/chat_main/chats_list/chat_list.dart'; // Correct import for ChatList
+import 'package:chatspot/views/chat/chat_main/chats_list/friend_chat_list.dart'; // Updated to use friend-aware chat list
 import 'package:chatspot/views/chat/call_screen.dart';
 import 'package:flutter/material.dart';
 import 'menu/main_drawer.dart';
 import 'menu/menu_page.dart';
-import '../views/search_bar/main_search_page.dart';
+import '../views/search_bar/friend_aware_search_page.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -15,7 +15,7 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   static final List<Widget> _pages = <Widget>[
-    ChatList(),
+    FriendChatList(),
     CallScreen(),
   ];
 
@@ -67,7 +67,8 @@ class _HomePageState extends State<HomePage> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => SearchPage()),
+                  MaterialPageRoute(
+                      builder: (context) => FriendAwareSearchPage()),
                 );
               },
             ),

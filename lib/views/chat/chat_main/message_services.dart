@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:chatspot/services/chat_cache_service.dart';
+import 'package:chatspot/services/friend/friend_request_service.dart';
 import 'package:flutter/material.dart';
 
 class MessageServices {
@@ -11,6 +12,19 @@ class MessageServices {
     required BuildContext context,
   }) async {
     try {
+      // Check if users are friends before sending message
+      final areFriends =
+          await FriendRequestService.areFriends(currentUserId, receiverId);
+      if (!areFriends) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('You can only send messages to friends'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
       DocumentReference chatRef =
           FirebaseFirestore.instance.collection('chats').doc(chatId);
 
@@ -83,6 +97,19 @@ class MessageServices {
     required BuildContext context,
   }) async {
     try {
+      // Check if users are friends before sending image
+      final areFriends =
+          await FriendRequestService.areFriends(currentUserId, receiverId);
+      if (!areFriends) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('You can only send messages to friends'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
       DocumentReference chatRef =
           FirebaseFirestore.instance.collection('chats').doc(chatId);
 

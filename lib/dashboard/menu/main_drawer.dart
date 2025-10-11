@@ -10,6 +10,8 @@ import 'components/settings/settings.dart';
 import '../../../main.dart';
 import '../../views/auth/signin.dart';
 import '../../services/cloudinary_service.dart';
+import '../../views/friends/friend_list_screen.dart';
+import '../../services/friend/friend_notification_service.dart';
 
 class CustomDrawer extends StatelessWidget {
   final CloudinaryService _cloudinaryService = CloudinaryService();
@@ -206,6 +208,70 @@ class CustomDrawer extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => ProfilePage()),
+              );
+            },
+          ),
+          StreamBuilder<int>(
+            stream: FriendNotificationService.getPendingRequestCount(),
+            builder: (context, snapshot) {
+              final pendingCount = snapshot.data ?? 0;
+
+              return ListTile(
+                leading: Stack(
+                  children: [
+                    Icon(Icons.people),
+                    if (pendingCount > 0)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          constraints: BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '$pendingCount',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                title: Text('Friends'),
+                trailing: pendingCount > 0
+                    ? Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$pendingCount',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                    : null,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => FriendListScreen()),
+                  );
+                },
               );
             },
           ),
