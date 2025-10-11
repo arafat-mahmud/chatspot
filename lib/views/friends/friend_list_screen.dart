@@ -285,10 +285,18 @@ class _FriendListScreenState extends State<FriendListScreen>
                               },
                             )
                           : null,
-                      border: OutlineInputBorder(
+                      border: InputBorder.none,
+                      filled: true,
+                      fillColor: Colors.grey.withOpacity(0.1),
+                      contentPadding: EdgeInsets.symmetric(vertical: 4.0),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide.none,
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide.none,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      contentPadding: EdgeInsets.symmetric(vertical: 12.0),
                     ),
                     onChanged: (value) {
                       setState(() {
