@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:chatspot/views/no_back_button_app_bar.dart';
 
 class ForgotPasswordScreen extends StatelessWidget {
   final FirebaseAuth _auth = FirebaseAuth.instance; // Initialize Firebase Auth
@@ -9,7 +10,7 @@ class ForgotPasswordScreen extends StatelessWidget {
     String email = '';
 
     return Scaffold(
-      appBar: AppBar(title: Text('Forgot Password')),
+      appBar: NoBackButtonAppBar(title: 'Forgot Password'),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

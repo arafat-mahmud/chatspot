@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
+import 'package:chatspot/views/no_back_button_app_bar.dart';
 import 'package:flutter/services.dart';
 import 'image_handler.dart';
 
@@ -41,11 +42,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         final iconColor = Colors.green;
 
         return Scaffold(
-          appBar: AppBar(
-            title: Text(
-              'Profile',
-              style: TextStyle(color: textColor),
-            ),
+          appBar: NoBackButtonAppBar(
+            title: 'Profile',
+            titleColor: textColor,
             backgroundColor: theme.appBarTheme.backgroundColor,
             iconTheme: IconThemeData(color: textColor),
           ),

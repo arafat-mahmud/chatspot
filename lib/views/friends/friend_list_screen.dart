@@ -5,6 +5,7 @@ import 'package:chatspot/services/friend/friend_request_debug_service.dart';
 import 'package:chatspot/services/friend/friend_notification_service.dart';
 import 'package:chatspot/views/chat/chat_main/main_chat_screen.dart';
 import 'package:chatspot/services/chat_initialization_service.dart';
+import 'package:chatspot/views/no_back_button_app_bar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../chat/chat_main/image_handler.dart';
@@ -94,15 +95,10 @@ class _FriendListScreenState extends State<FriendListScreen>
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: NoBackButtonAppBar(
+        title: 'Friends',
         backgroundColor: theme.primaryColor,
-        title: Text(
-          'Friends',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: theme.appBarTheme.titleTextStyle?.color ?? Colors.white,
-          ),
-        ),
+        titleColor: theme.appBarTheme.titleTextStyle?.color ?? Colors.white,
         iconTheme:
             theme.appBarTheme.iconTheme ?? IconThemeData(color: Colors.white),
         actions: [
