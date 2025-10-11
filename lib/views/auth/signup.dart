@@ -41,6 +41,9 @@ class _SignUpPageState extends State<SignUpPage> {
   // Add a boolean variable to track email validity
   bool _isEmailInvalid = false;
 
+  // Add a boolean variable to track password match
+  bool _passwordsMatch = true;
+
   @override
   void initState() {
     super.initState();
@@ -244,6 +247,11 @@ class _SignUpPageState extends State<SignUpPage> {
                     onChanged: (value) {
                       setState(() {
                         _isPasswordValid(value); // Validate password on change
+                        // Check if confirm password matches when password changes
+                        if (_confirmPasswordController.text.isNotEmpty) {
+                          _passwordsMatch =
+                              _confirmPasswordController.text == value;
+                        }
                       });
                     },
                   ),
@@ -264,6 +272,10 @@ class _SignUpPageState extends State<SignUpPage> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
+                  errorText: !_passwordsMatch &&
+                          _confirmPasswordController.text.isNotEmpty
+                      ? 'Passwords do not match'
+                      : null,
                   suffixIcon: IconButton(
                     icon: Icon(
                       _isConfirmPasswordVisible
@@ -279,6 +291,12 @@ class _SignUpPageState extends State<SignUpPage> {
                     },
                   ),
                 ),
+                onChanged: (value) {
+                  setState(() {
+                    _passwordsMatch =
+                        value.isEmpty || value == _passwordController.text;
+                  });
+                },
                 onTap: () {
                   // When the Confirm Password field is tapped, unfocus the password field
                   _passwordFocusNode.unfocus();
@@ -310,6 +328,18 @@ class _SignUpPageState extends State<SignUpPage> {
                 onPressed: _isLoading
                     ? null
                     : () async {
+                        // Check if passwords match before proceeding
+                        if (_passwordController.text !=
+                            _confirmPasswordController.text) {
+                          setState(() {
+                            _passwordsMatch = false;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Passwords do not match')),
+                          );
+                          return;
+                        }
+
                         setState(() {
                           _isLoading = true;
                         });
