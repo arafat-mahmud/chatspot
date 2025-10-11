@@ -22,7 +22,22 @@ class _FriendListScreenState extends State<FriendListScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
+
+    // Listen for tab changes to mark requests as seen when the Requests tab is selected
+    _tabController.addListener(_handleTabSelection);
+
+    // If screen is opened directly to the Requests tab, mark all as seen
+    if (_tabController.index == 1) {
+      FriendNotificationService.markAllRequestsAsSeen();
+    }
+  }
+
+  void _handleTabSelection() {
+    // When user views the Requests tab (index 1), mark all requests as seen
+    if (_tabController.index == 1) {
+      FriendNotificationService.markAllRequestsAsSeen();
+    }
   }
 
   void _refreshData() {
@@ -57,6 +72,7 @@ class _FriendListScreenState extends State<FriendListScreen>
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabSelection);
     _tabController.dispose();
     super.dispose();
   }

@@ -234,16 +234,16 @@ class MenuPage extends StatelessWidget {
             },
           ),
           StreamBuilder<int>(
-            stream: FriendNotificationService.getPendingRequestCount(),
+            stream: FriendNotificationService.getUnseenRequestCount(),
             builder: (context, snapshot) {
-              final pendingCount = snapshot.data ?? 0;
+              final unseenCount = snapshot.data ?? 0;
 
               return ListTile(
                 leading: Icon(Icons.people),
                 title: Text('Friends'),
-                trailing: pendingCount > 0
+                trailing: unseenCount > 0
                     ? Text(
-                        '$pendingCount',
+                        '$unseenCount',
                         style: TextStyle(
                           color: Colors.red,
                           fontSize: 16,

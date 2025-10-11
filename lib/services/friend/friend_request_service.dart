@@ -72,6 +72,7 @@ class FriendRequestService {
         'senderProfilePic': senderData['profilePictureUrl'] ?? '',
         'status': 'pending',
         'timestamp': FieldValue.serverTimestamp(),
+        'seen': false, // Mark new requests as unseen by default
       });
 
       return true;
@@ -111,6 +112,7 @@ class FriendRequestService {
       batch.update(requestRef, {
         'status': 'accepted',
         'acceptedAt': FieldValue.serverTimestamp(),
+        'seen': true, // Ensure the request is marked as seen when accepted
       });
 
       // Create friendship document
@@ -149,6 +151,7 @@ class FriendRequestService {
       await _firestore.collection('friend_requests').doc(requestId).update({
         'status': 'rejected',
         'rejectedAt': FieldValue.serverTimestamp(),
+        'seen': true, // Ensure the request is marked as seen when rejected
       });
       return true;
     } catch (e) {
