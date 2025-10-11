@@ -2,6 +2,7 @@ import 'package:chatspot/views/chat/chat_main/chats_list/chat_list.dart'; // Cor
 import 'package:chatspot/views/chat/call_screen.dart';
 import 'package:flutter/material.dart';
 import 'menu/main_drawer.dart';
+import 'menu/menu_page.dart';
 import '../views/search_bar/main_search_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -11,6 +12,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   static final List<Widget> _pages = <Widget>[
     ChatList(),
@@ -23,20 +25,30 @@ class _HomePageState extends State<HomePage> {
   ];
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (index == 2) {
+      // Navigate to full menu page when Menu is tapped
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => MenuPage()),
+      );
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
+      key: _scaffoldKey,
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(56.0),
         child: AppBar(
           backgroundColor: theme.primaryColor,
+          automaticallyImplyLeading: false, // Disable automatic drawer button
           title: SizedBox(
             width: double.infinity,
             child: Text(
@@ -68,7 +80,8 @@ class _HomePageState extends State<HomePage> {
               color: theme.dividerColor,
             ),
           ),
-          iconTheme: theme.appBarTheme.iconTheme ?? IconThemeData(color: Colors.white),
+          iconTheme:
+              theme.appBarTheme.iconTheme ?? IconThemeData(color: Colors.white),
         ),
       ),
       drawer: CustomDrawer(),
@@ -83,13 +96,17 @@ class _HomePageState extends State<HomePage> {
             icon: Icon(Icons.call),
             label: 'Calls',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.menu),
+            label: 'Menu',
+          ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: theme.bottomNavigationBarTheme.selectedItemColor ?? 
+        selectedItemColor: theme.bottomNavigationBarTheme.selectedItemColor ??
             const Color.fromARGB(255, 21, 138, 234),
-        unselectedItemColor: theme.bottomNavigationBarTheme.unselectedItemColor ?? 
-            Colors.grey,
-        backgroundColor: theme.bottomNavigationBarTheme.backgroundColor ?? 
+        unselectedItemColor:
+            theme.bottomNavigationBarTheme.unselectedItemColor ?? Colors.grey,
+        backgroundColor: theme.bottomNavigationBarTheme.backgroundColor ??
             theme.scaffoldBackgroundColor,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
