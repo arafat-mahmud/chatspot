@@ -274,7 +274,7 @@ class _SignInPageState extends State<SignInPage> {
                     fontSize: 24.0,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Chivo',
-                    color: Colors.black),
+                    color: Theme.of(context).colorScheme.onSurface),
               ),
               SizedBox(height: 8),
               Text(
@@ -282,7 +282,7 @@ class _SignInPageState extends State<SignInPage> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14.0,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontFamily: 'Chivo',
                 ),
               ),
@@ -293,12 +293,39 @@ class _SignInPageState extends State<SignInPage> {
                 controller: _emailController,
                 decoration: InputDecoration(
                   labelText: 'Email',
+                  labelStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontFamily: 'Chivo',
+                  ),
+                  floatingLabelStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontFamily: 'Chivo',
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.0),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline,
+                      width: 1.0,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline,
+                      width: 1.0,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2.0,
+                    ),
                   ),
                 ),
                 style: TextStyle(
                   fontFamily: 'Chivo',
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               SizedBox(height: 16),
@@ -309,10 +336,18 @@ class _SignInPageState extends State<SignInPage> {
                 obscureText: _obscureText, // Use the state variable here
                 decoration: InputDecoration(
                   labelText: 'Password',
+                  labelStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontFamily: 'Chivo',
+                  ),
+                  floatingLabelStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontFamily: 'Chivo',
+                  ),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscureText ? Icons.visibility : Icons.visibility_off,
-                      color: Theme.of(context).iconTheme.color,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     onPressed: () {
                       setState(() {
@@ -322,10 +357,29 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.0),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline,
+                      width: 1.0,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline,
+                      width: 1.0,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2.0,
+                    ),
                   ),
                 ),
                 style: TextStyle(
                   fontFamily: 'Chivo',
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               SizedBox(height: 0),
@@ -346,7 +400,7 @@ class _SignInPageState extends State<SignInPage> {
                         child: Text(
                           'Forgot password?',
                           style: TextStyle(
-                            color: Colors.black,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.bold,
                             fontFamily: 'Chivo',
                           ),
@@ -355,7 +409,7 @@ class _SignInPageState extends State<SignInPage> {
                       Positioned(
                         bottom: 0,
                         child: Container(
-                          color: Colors.black,
+                          color: Theme.of(context).colorScheme.onSurface,
                           height: 2,
                           width: 124,
                         ),
@@ -373,18 +427,10 @@ class _SignInPageState extends State<SignInPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
-                  backgroundColor:
-                      Theme.of(context).brightness == Brightness.dark
-                          ? Colors.grey[800]
-                          : Colors.white,
-                  foregroundColor:
-                      Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : Colors.black,
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  foregroundColor: Theme.of(context).colorScheme.onSurface,
                   side: BorderSide(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.grey[600]!
-                        : Colors.grey,
+                    color: Theme.of(context).colorScheme.outline,
                   ),
                 ),
                 onPressed: _isLoading ? null : _signIn,
@@ -397,7 +443,7 @@ class _SignInPageState extends State<SignInPage> {
                         'Sign in',
                         style: TextStyle(
                           fontSize: 16.0,
-                          color: const Color.fromARGB(255, 0, 0, 0),
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontFamily: 'Chivo',
                         ),
                       ),
@@ -410,7 +456,7 @@ class _SignInPageState extends State<SignInPage> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 11.0,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontFamily: 'Chivo',
                 ),
               ),
@@ -424,7 +470,7 @@ class _SignInPageState extends State<SignInPage> {
                     child: Text(
                       'or',
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontFamily: 'Chivo',
                       ),
                     ),
@@ -441,7 +487,8 @@ class _SignInPageState extends State<SignInPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
-                  side: BorderSide(color: Colors.grey),
+                  side:
+                      BorderSide(color: Theme.of(context).colorScheme.outline),
                 ),
                 icon: Icon(
                   Icons.person_add,
@@ -451,7 +498,7 @@ class _SignInPageState extends State<SignInPage> {
                 label: Text(
                   'Create a New Account',
                   style: TextStyle(
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontFamily: 'Chivo',
                   ),
                 ),
@@ -472,7 +519,9 @@ class _SignInPageState extends State<SignInPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
                     child: Text(
                       'or',
-                      style: TextStyle(color: Colors.grey, fontFamily: 'Chivo'),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontFamily: 'Chivo'),
                     ),
                   ),
                   Expanded(child: Divider()),
@@ -485,7 +534,7 @@ class _SignInPageState extends State<SignInPage> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12.0,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontFamily: 'Chivo',
                 ),
               ),
@@ -499,7 +548,8 @@ class _SignInPageState extends State<SignInPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
-                  side: BorderSide(color: Colors.grey),
+                  side:
+                      BorderSide(color: Theme.of(context).colorScheme.outline),
                 ),
                 icon: Image.asset(
                   'assets/images/google_icon.png',
@@ -508,7 +558,7 @@ class _SignInPageState extends State<SignInPage> {
                 label: Text(
                   'Continue with Google',
                   style: TextStyle(
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontFamily: 'Chivo',
                   ),
                 ),
@@ -525,16 +575,19 @@ class _SignInPageState extends State<SignInPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
-                  side: BorderSide(color: Colors.grey),
+                  side:
+                      BorderSide(color: Theme.of(context).colorScheme.outline),
                 ),
                 icon: Icon(
                   Icons.apple,
                   size: 24.0,
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
                 label: Text(
                   'Sign in with Apple',
-                  style: TextStyle(color: Colors.black, fontFamily: 'Chivo'),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontFamily: 'Chivo'),
                 ),
                 onPressed: () {
                   print('Apple Sign-In clicked');

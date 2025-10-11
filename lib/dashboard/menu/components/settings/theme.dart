@@ -10,70 +10,185 @@ class ThemeService {
   static String? _currentUserId;
   static ValueNotifier<ThemeData> themeNotifier = ValueNotifier(_lightTheme);
 
-  // Custom light theme - using white as primary
-  static final ThemeData _lightTheme = ThemeData(
-    brightness: Brightness.light,
-    primaryColor: Colors.white,
-    scaffoldBackgroundColor: Colors.white,
-    cardColor: Colors.white,
-    appBarTheme: AppBarTheme(
-      backgroundColor: Colors.white,
-      foregroundColor: Colors.black,
-      iconTheme: IconThemeData(color: Colors.black),
-      titleTextStyle: TextStyle(
-        color: Colors.black,
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-      ),
-      elevation: 1,
-    ),
-    iconTheme: IconThemeData(color: Colors.black),
-    textTheme: TextTheme(
-      bodyLarge: TextStyle(color: Colors.black87),
-      bodyMedium: TextStyle(color: Colors.black87),
-      titleLarge: TextStyle(color: Colors.black),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        side: BorderSide(color: Colors.grey),
-      ),
-    ),
-    dividerColor: Colors.grey[300],
+  // Light theme color scheme
+  static const ColorScheme _lightColorScheme = ColorScheme.light(
+    primary: Color(0xFF1976D2), // Blue for primary actions and focused states
+    onPrimary: Colors.white,
+    secondary: Color(0xFF0D47A1),
+    onSecondary: Colors.white,
+    surface: Colors.white,
+    onSurface: Colors.black87,
+    surfaceContainerHighest: Color(0xFFF5F5F5),
+    onSurfaceVariant: Colors.black54,
+    outline: Color(0xFF757575), // Darker grey for better visibility
+    outlineVariant: Color(0xFFE0E0E0),
   );
 
-  // Custom dark theme
-  static final ThemeData _darkTheme = ThemeData(
-    brightness: Brightness.dark,
-    primaryColor: Colors.grey[900],
-    scaffoldBackgroundColor: Colors.grey[900],
-    cardColor: Colors.grey[800],
+  // Dark theme color scheme
+  static const ColorScheme _darkColorScheme = ColorScheme.dark(
+    primary: Color(0xFF212121),
+    onPrimary: Colors.white,
+    secondary: Color(0xFF42A5F5),
+    onSecondary: Colors.black,
+    surface: Color(0xFF212121),
+    onSurface: Color(0xFFE1E1E1),
+    surfaceContainerHighest: Color(0xFF424242),
+    onSurfaceVariant: Color(0xFFBDBDBD),
+    outline: Color(0xFF757575),
+    outlineVariant: Color(0xFF424242),
+  );
+
+  // Custom light theme - using comprehensive color scheme
+  static final ThemeData _lightTheme = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    colorScheme: _lightColorScheme,
+    primaryColor:
+        Colors.white, // Keep white for app bar and other primary elements
+    scaffoldBackgroundColor: _lightColorScheme.surface,
+    cardColor: _lightColorScheme.surface,
     appBarTheme: AppBarTheme(
-      backgroundColor: Colors.grey[900],
-      foregroundColor: Colors.white,
-      iconTheme: IconThemeData(color: Colors.white),
+      backgroundColor: _lightColorScheme.surface,
+      foregroundColor: _lightColorScheme.onSurface,
+      iconTheme: IconThemeData(color: _lightColorScheme.onSurface),
+      actionsIconTheme: IconThemeData(color: _lightColorScheme.onSurface),
       titleTextStyle: TextStyle(
-        color: Colors.white,
+        color: _lightColorScheme.onSurface,
         fontSize: 20,
         fontWeight: FontWeight.bold,
       ),
       elevation: 1,
+      surfaceTintColor: Colors.transparent,
     ),
-    iconTheme: IconThemeData(color: Colors.white),
+    iconTheme: IconThemeData(color: _lightColorScheme.onSurface),
     textTheme: TextTheme(
-      bodyLarge: TextStyle(color: Colors.white.withOpacity(0.9)),
-      bodyMedium: TextStyle(color: Colors.white.withOpacity(0.9)),
-      titleLarge: TextStyle(color: Colors.white),
+      displayLarge: TextStyle(color: _lightColorScheme.onSurface),
+      displayMedium: TextStyle(color: _lightColorScheme.onSurface),
+      displaySmall: TextStyle(color: _lightColorScheme.onSurface),
+      headlineLarge: TextStyle(color: _lightColorScheme.onSurface),
+      headlineMedium: TextStyle(color: _lightColorScheme.onSurface),
+      headlineSmall: TextStyle(color: _lightColorScheme.onSurface),
+      titleLarge: TextStyle(color: _lightColorScheme.onSurface),
+      titleMedium: TextStyle(color: _lightColorScheme.onSurface),
+      titleSmall: TextStyle(color: _lightColorScheme.onSurface),
+      bodyLarge: TextStyle(color: _lightColorScheme.onSurface),
+      bodyMedium: TextStyle(color: _lightColorScheme.onSurface),
+      bodySmall: TextStyle(color: _lightColorScheme.onSurfaceVariant),
+      labelLarge: TextStyle(color: _lightColorScheme.onSurface),
+      labelMedium: TextStyle(color: _lightColorScheme.onSurface),
+      labelSmall: TextStyle(color: _lightColorScheme.onSurfaceVariant),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.grey[800],
-        foregroundColor: Colors.white,
-        side: BorderSide(color: Colors.grey[600]!),
+        backgroundColor: _lightColorScheme.surface,
+        foregroundColor: _lightColorScheme.onSurface,
+        side: BorderSide(color: _lightColorScheme.outline),
       ),
     ),
-    dividerColor: Colors.grey[600],
+    inputDecorationTheme: InputDecorationTheme(
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(color: _lightColorScheme.outline, width: 1.0),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(color: _lightColorScheme.outline, width: 1.0),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(color: _lightColorScheme.primary, width: 2.0),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(color: _lightColorScheme.error, width: 1.0),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(color: _lightColorScheme.error, width: 2.0),
+      ),
+      labelStyle: TextStyle(color: _lightColorScheme.onSurfaceVariant),
+      hintStyle: TextStyle(color: _lightColorScheme.onSurfaceVariant),
+      floatingLabelStyle: TextStyle(color: _lightColorScheme.primary),
+      filled: false,
+      fillColor: _lightColorScheme.surface,
+    ),
+    dividerColor: _lightColorScheme.outlineVariant,
+  );
+
+  // Custom dark theme - using comprehensive color scheme
+  static final ThemeData _darkTheme = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    colorScheme: _darkColorScheme,
+    primaryColor: _darkColorScheme.primary,
+    scaffoldBackgroundColor: _darkColorScheme.surface,
+    cardColor: _darkColorScheme.surfaceContainerHighest,
+    appBarTheme: AppBarTheme(
+      backgroundColor: _darkColorScheme.surface,
+      foregroundColor: _darkColorScheme.onSurface,
+      iconTheme: IconThemeData(color: _darkColorScheme.onSurface),
+      actionsIconTheme: IconThemeData(color: _darkColorScheme.onSurface),
+      titleTextStyle: TextStyle(
+        color: _darkColorScheme.onSurface,
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+      ),
+      elevation: 1,
+      surfaceTintColor: Colors.transparent,
+    ),
+    iconTheme: IconThemeData(color: _darkColorScheme.onSurface),
+    textTheme: TextTheme(
+      displayLarge: TextStyle(color: _darkColorScheme.onSurface),
+      displayMedium: TextStyle(color: _darkColorScheme.onSurface),
+      displaySmall: TextStyle(color: _darkColorScheme.onSurface),
+      headlineLarge: TextStyle(color: _darkColorScheme.onSurface),
+      headlineMedium: TextStyle(color: _darkColorScheme.onSurface),
+      headlineSmall: TextStyle(color: _darkColorScheme.onSurface),
+      titleLarge: TextStyle(color: _darkColorScheme.onSurface),
+      titleMedium: TextStyle(color: _darkColorScheme.onSurface),
+      titleSmall: TextStyle(color: _darkColorScheme.onSurface),
+      bodyLarge: TextStyle(color: _darkColorScheme.onSurface),
+      bodyMedium: TextStyle(color: _darkColorScheme.onSurface),
+      bodySmall: TextStyle(color: _darkColorScheme.onSurfaceVariant),
+      labelLarge: TextStyle(color: _darkColorScheme.onSurface),
+      labelMedium: TextStyle(color: _darkColorScheme.onSurface),
+      labelSmall: TextStyle(color: _darkColorScheme.onSurfaceVariant),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _darkColorScheme.surfaceContainerHighest,
+        foregroundColor: _darkColorScheme.onSurface,
+        side: BorderSide(color: _darkColorScheme.outline),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(color: _darkColorScheme.outline, width: 1.0),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(color: _darkColorScheme.outline, width: 1.0),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(color: _darkColorScheme.secondary, width: 2.0),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(color: _darkColorScheme.error, width: 1.0),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(color: _darkColorScheme.error, width: 2.0),
+      ),
+      labelStyle: TextStyle(color: _darkColorScheme.onSurfaceVariant),
+      hintStyle: TextStyle(color: _darkColorScheme.onSurfaceVariant),
+      floatingLabelStyle: TextStyle(color: _darkColorScheme.secondary),
+      filled: false,
+      fillColor: _darkColorScheme.surface,
+    ),
+    dividerColor: _darkColorScheme.outlineVariant,
   );
 
   // Initialize theme service
@@ -93,6 +208,32 @@ class ThemeService {
 
   // Check if dark mode is enabled
   static bool get isDarkMode => _isDarkMode;
+
+  // Get theme-aware text colors for easy access
+  static Color get primaryTextColor => _currentTheme.colorScheme.onSurface;
+  static Color get secondaryTextColor =>
+      _currentTheme.colorScheme.onSurfaceVariant;
+  static Color get onPrimaryTextColor => _currentTheme.colorScheme.onPrimary;
+  static Color get onSecondaryTextColor =>
+      _currentTheme.colorScheme.onSecondary;
+
+  // Get contrast text color for any background color
+  static Color getContrastTextColor(Color backgroundColor) {
+    final brightness = ThemeData.estimateBrightnessForColor(backgroundColor);
+    return brightness == Brightness.dark ? Colors.white : Colors.black;
+  }
+
+  // Get adaptive text color based on current theme
+  static Color getAdaptiveTextColor(BuildContext context,
+      {double opacity = 1.0}) {
+    return Theme.of(context).colorScheme.onSurface.withOpacity(opacity);
+  }
+
+  // Get adaptive secondary text color based on current theme
+  static Color getAdaptiveSecondaryTextColor(BuildContext context,
+      {double opacity = 0.6}) {
+    return Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(opacity);
+  }
 
   // Change theme
   static Future<void> changeTheme(ThemeData theme) async {

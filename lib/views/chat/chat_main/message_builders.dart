@@ -1,4 +1,5 @@
 import 'package:chatspot/views/chat/chat_main/date_formatters.dart';
+import 'package:chatspot/dashboard/menu/components/settings/text_theme_helper.dart';
 import 'package:flutter/material.dart';
 
 class MessageBuilders {
@@ -6,17 +7,21 @@ class MessageBuilders {
       bool isUser, DateTime? timestamp, bool isShortMessage) {
     final theme = Theme.of(context);
 
+    // Use theme-aware colors for message bubbles
+    final userBubbleColor = theme.colorScheme.primary;
+    final otherBubbleColor = theme.colorScheme.surfaceContainerHighest;
+
+    // Get appropriate text colors based on bubble background
+    final userTextColor = TextThemeHelper.getContrastTextColor(userBubbleColor);
+    final otherTextColor = theme.colorScheme.onSurface;
+
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
         padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 7.0),
         decoration: BoxDecoration(
-          color: isUser
-              ? theme.primaryColor
-              : theme.brightness == Brightness.dark
-                  ? Colors.grey[800]
-                  : Colors.white,
+          color: isUser ? userBubbleColor : otherBubbleColor,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
@@ -25,7 +30,7 @@ class MessageBuilders {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
+              color: theme.colorScheme.shadow.withOpacity(0.1),
               spreadRadius: 1,
               blurRadius: 2,
               offset: Offset(0, 1),
@@ -40,12 +45,13 @@ class MessageBuilders {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    message,
-                    style: TextStyle(
-                      color: isUser
-                          ? Colors.white
-                          : theme.textTheme.bodyLarge?.color,
+                  Flexible(
+                    child: Text(
+                      message,
+                      style: TextStyle(
+                        color: isUser ? userTextColor : otherTextColor,
+                        fontSize: theme.textTheme.bodyMedium?.fontSize,
+                      ),
                     ),
                   ),
                   SizedBox(width: 6),
@@ -54,8 +60,8 @@ class MessageBuilders {
                     style: TextStyle(
                       fontSize: 10,
                       color: isUser
-                          ? Colors.white.withOpacity(0.8)
-                          : theme.textTheme.bodyLarge?.color?.withOpacity(0.6),
+                          ? userTextColor.withOpacity(0.8)
+                          : otherTextColor.withOpacity(0.6),
                     ),
                   ),
                 ],
@@ -63,12 +69,14 @@ class MessageBuilders {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    message,
-                    style: TextStyle(
-                      color: isUser
-                          ? Colors.white
-                          : theme.textTheme.bodyLarge?.color,
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      message,
+                      style: TextStyle(
+                        color: isUser ? userTextColor : otherTextColor,
+                        fontSize: theme.textTheme.bodyMedium?.fontSize,
+                      ),
                     ),
                   ),
                   SizedBox(height: 3),
@@ -77,8 +85,8 @@ class MessageBuilders {
                     style: TextStyle(
                       fontSize: 10,
                       color: isUser
-                          ? Colors.white.withOpacity(0.8)
-                          : theme.textTheme.bodyLarge?.color?.withOpacity(0.6),
+                          ? userTextColor.withOpacity(0.8)
+                          : otherTextColor.withOpacity(0.6),
                     ),
                   ),
                 ],
@@ -103,7 +111,7 @@ class MessageBuilders {
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
+              color: theme.colorScheme.shadow.withOpacity(0.1),
               spreadRadius: 1,
               blurRadius: 2,
               offset: Offset(0, 1),
@@ -120,9 +128,10 @@ class MessageBuilders {
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
                   return Container(
-                    color: theme.cardColor,
+                    color: theme.colorScheme.surfaceContainerHighest,
                     child: Center(
                       child: CircularProgressIndicator(
+                        color: theme.colorScheme.primary,
                         value: loadingProgress.expectedTotalBytes != null
                             ? loadingProgress.cumulativeBytesLoaded /
                                 loadingProgress.expectedTotalBytes!
@@ -133,10 +142,13 @@ class MessageBuilders {
                 },
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    color: theme.cardColor,
+                    color: theme.colorScheme.surfaceContainerHighest,
                     child: Center(
-                      child: Icon(Icons.broken_image,
-                          color: theme.iconTheme.color),
+                      child: Icon(
+                        Icons.broken_image,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        size: 48,
+                      ),
                     ),
                   );
                 },
@@ -148,7 +160,7 @@ class MessageBuilders {
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.black54,
+                  color: Colors.black.withOpacity(0.7),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -156,6 +168,7 @@ class MessageBuilders {
                   style: TextStyle(
                     fontSize: 10,
                     color: Colors.white,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
