@@ -284,6 +284,18 @@ class FriendRequestService {
           }
         }
 
+        // Sort by timestamp if available, with null safety
+        requests.sort((a, b) {
+          final aTime = a['timestamp']?.toDate();
+          final bTime = b['timestamp']?.toDate();
+
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+
+          return bTime.compareTo(aTime); // Most recent first
+        });
+
         return requests;
       } catch (e) {
         print('Error in fallback friend requests: $e');

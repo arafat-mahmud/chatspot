@@ -6,6 +6,7 @@ import 'package:chatspot/services/friend/friend_notification_service.dart';
 import 'package:chatspot/views/chat/chat_main/main_chat_screen.dart';
 import 'package:chatspot/services/chat_initialization_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../chat/chat_main/image_handler.dart';
 
 class FriendListScreen extends StatefulWidget {
@@ -28,6 +29,30 @@ class _FriendListScreenState extends State<FriendListScreen>
     setState(() {
       _refreshKey++;
     });
+  }
+
+  String _formatRequestDate(dynamic timestamp) {
+    if (timestamp == null) return 'Recently';
+
+    try {
+      DateTime date = timestamp.toDate();
+      DateTime now = DateTime.now();
+      Duration difference = now.difference(date);
+
+      if (difference.inDays > 7) {
+        return DateFormat('MMM dd, yyyy').format(date);
+      } else if (difference.inDays > 0) {
+        return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} ago';
+      } else {
+        return 'Just now';
+      }
+    } catch (e) {
+      return 'Recently';
+    }
   }
 
   @override
@@ -84,20 +109,12 @@ class _FriendListScreenState extends State<FriendListScreen>
                       Text('Requests'),
                       if (pendingCount > 0) ...[
                         SizedBox(width: 8),
-                        Container(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
+                        Text(
+                          '$pendingCount',
+                          style: TextStyle(
                             color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '$pendingCount',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
@@ -423,7 +440,7 @@ class _FriendListScreenState extends State<FriendListScreen>
                       ),
                     ),
                   Text(
-                    'wants to be your friend',
+                    _formatRequestDate(request['timestamp']),
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[600],

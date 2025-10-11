@@ -242,20 +242,12 @@ class MenuPage extends StatelessWidget {
                 leading: Icon(Icons.people),
                 title: Text('Friends'),
                 trailing: pendingCount > 0
-                    ? Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
+                    ? Text(
+                        '$pendingCount',
+                        style: TextStyle(
                           color: Colors.red,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '$pendingCount',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
                       )
                     : null,
