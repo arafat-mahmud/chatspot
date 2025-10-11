@@ -215,6 +215,7 @@ class MenuPage extends StatelessWidget {
               );
             },
           ),
+          Divider(height: 25, color: theme.dividerColor),
           ListTile(
             leading: Icon(Icons.person),
             title: Text('My Profile'),
