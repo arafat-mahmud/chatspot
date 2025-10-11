@@ -50,7 +50,6 @@ class ChatMessageList extends StatelessWidget {
                 bool isShortMessage = messageText.length <= 5;
                 var seenBy = msg['seenBy'] as Map<String, dynamic>? ?? {};
                 bool hasSeen = seenBy.isNotEmpty;
-                bool isLastMessage = index == 0; // First item in reverse list
 
                 // Mark message as seen if it's not sent by current user
                 if (!isUser && !seenBy.containsKey(currentUserId)) {
@@ -95,6 +94,31 @@ class ChatMessageList extends StatelessWidget {
                           userSnapshot.data!.data() as Map<String, dynamic>?;
                       profilePictureUrl = userData?['profilePictureUrl'] ?? '';
                       senderName = userData?['name'] ?? '';
+                    }
+
+                    // Determine if this message should show "seen by"
+                    bool shouldShowSeenBy = false;
+                    if (isUser && hasSeen) {
+                      // Find the most recent seen message by this user
+                      int mostRecentSeenIndex = -1;
+                      for (int i = 0; i < messages.length; i++) {
+                        var checkMsg =
+                            messages[i].data() as Map<String, dynamic>;
+                        var checkSeenBy =
+                            checkMsg['seenBy'] as Map<String, dynamic>? ?? {};
+                        bool checkMsgSentByUser =
+                            checkMsg['senderId'] == currentUserId;
+
+                        if (checkMsgSentByUser && checkSeenBy.isNotEmpty) {
+                          mostRecentSeenIndex = i;
+                          break; // First one found is most recent (since list is reversed)
+                        }
+                      }
+
+                      // Show "seen by" only on the most recent seen message
+                      if (index == mostRecentSeenIndex) {
+                        shouldShowSeenBy = true;
+                      }
                     }
 
                     return Column(
@@ -176,16 +200,15 @@ class ChatMessageList extends StatelessWidget {
                                         isShortMessage),
                                 ],
                               ),
-                              // Only show seen indicator on last message
-                              if (isLastMessage && isUser && hasSeen)
+                              // Show seen indicator based on the new logic
+                              if (shouldShowSeenBy)
                                 Padding(
                                   padding:
                                       const EdgeInsets.only(top: 2, right: 8),
                                   child: FutureBuilder<DocumentSnapshot>(
                                     future: FirebaseFirestore.instance
                                         .collection('users')
-                                        .doc(msg[
-                                            'receiverId'])
+                                        .doc(msg['receiverId'])
                                         .get(),
                                     builder: (context, receiverSnapshot) {
                                       if (receiverSnapshot.hasData) {
