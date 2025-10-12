@@ -2,8 +2,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatspot/views/chat/chat_main/date_formatters.dart';
 import 'package:chatspot/views/chat/chat_main/image_handler.dart';
 import 'package:chatspot/services/chat_cache_service.dart';
+import 'package:chatspot/services/delete/conversation_delete_service.dart';
+import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class ChatListItem extends StatefulWidget {
   final String userId;
@@ -98,6 +101,32 @@ class _ChatListItemState extends State<ChatListItem> {
     });
   }
 
+  Future<void> _handleLongPress() async {
+    // Haptic feedback for long press
+    HapticFeedback.mediumImpact();
+
+    // Get current theme
+    final theme = ThemeService.themeNotifier.value;
+
+    // Show delete conversation dialog
+    final shouldDelete =
+        await ConversationDeleteService.showDeleteConversationDialog(
+      context: context,
+      otherUserName: widget.name,
+      theme: theme,
+    );
+
+    if (shouldDelete == true) {
+      // Delete the entire conversation
+      await ConversationDeleteService.deleteConversation(
+        chatId: widget.chatId,
+        otherUserId: widget.userId,
+        otherUserName: widget.name,
+        context: context,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListTile(
@@ -163,6 +192,7 @@ class _ChatListItemState extends State<ChatListItem> {
         _markAsRead();
         widget.onTap();
       },
+      onLongPress: _handleLongPress,
     );
   }
 }
