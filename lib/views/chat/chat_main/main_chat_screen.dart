@@ -4,7 +4,8 @@ import 'package:chatspot/views/chat/chat_main/image_handler.dart';
 import 'package:chatspot/views/chat/chat_main/message_input.dart';
 import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:chatspot/views/chat/chat_main/user_profile_screen.dart';
-import 'package:chatspot/views/no_back_button_app_bar.dart';
+import 'package:chatspot/views/no_back_button_app_bar.dart'; // Keep for backward compatibility
+import 'package:chatspot/views/chat/chat_main/chat_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -151,7 +152,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
       valueListenable: ThemeService.themeNotifier,
       builder: (context, theme, child) {
         return Scaffold(
-          appBar: NoBackButtonAppBar(
+          appBar: ChatAppBar(
+            titleSpacing: -3.5,
             title: widget.userName,
             titleWidget: GestureDetector(
               onTap: _openUserProfile,
