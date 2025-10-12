@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatspot/views/chat/chat_main/date_formatters.dart';
 import 'package:chatspot/views/chat/chat_main/image_handler.dart';
+import 'package:chatspot/services/chat_cache_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -31,11 +32,45 @@ class ChatListItem extends StatefulWidget {
 
 class _ChatListItemState extends State<ChatListItem> {
   late bool _isRead;
+  String? _profilePictureUrl;
+  final ChatCacheService _chatCacheService = ChatCacheService();
 
   @override
   void initState() {
     super.initState();
     _isRead = widget.isRead;
+    _loadProfilePicture();
+  }
+
+  Future<void> _loadProfilePicture() async {
+    try {
+      // Check if the chat exists in the cache first
+      final cachedChat = _chatCacheService.getChatByUserId(widget.userId);
+
+      if (cachedChat != null && cachedChat.otherUserProfilePic != null) {
+        if (mounted) {
+          setState(() {
+            _profilePictureUrl = cachedChat.otherUserProfilePic;
+          });
+        }
+        return;
+      }
+
+      // Fallback to Firestore if not in cache
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .get();
+
+      if (doc.exists && mounted) {
+        final data = doc.data() as Map<String, dynamic>?;
+        setState(() {
+          _profilePictureUrl = data?['profilePictureUrl'];
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading profile picture: $e");
+    }
   }
 
   Future<void> _markAsRead() async {
@@ -49,6 +84,9 @@ class _ChatListItemState extends State<ChatListItem> {
           .update({
         'readBy.${widget.currentUserId}': true,
       });
+
+      // Also update in the cache for immediate UI feedback
+      _chatCacheService.updateChatInCache(widget.chatId, isRead: true);
     } catch (e) {
       // If no permissions, we'll just update locally
       debugPrint("Couldn't update read status in Firestore: $e");
@@ -62,24 +100,15 @@ class _ChatListItemState extends State<ChatListItem> {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.userId)
-            .snapshots(),
-        builder: (context, snapshot) {
-          final data = snapshot.data?.data() as Map<String, dynamic>?;
-          final profilePictureUrl = data?['profilePictureUrl'] as String?;
-
-          if (profilePictureUrl?.isNotEmpty == true) {
-            return GestureDetector(
+      leading: _profilePictureUrl?.isNotEmpty == true
+          ? GestureDetector(
               onTap: () {
-                ImageHandler.showFullScreenImage(context, profilePictureUrl);
+                ImageHandler.showFullScreenImage(context, _profilePictureUrl!);
               },
               child: CircleAvatar(
                 radius: 24,
                 child: CachedNetworkImage(
-                  imageUrl: profilePictureUrl!,
+                  imageUrl: _profilePictureUrl!,
                   imageBuilder: (context, imageProvider) => Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -103,15 +132,11 @@ class _ChatListItemState extends State<ChatListItem> {
                   memCacheWidth: 96,
                 ),
               ),
-            );
-          }
-
-          return CircleAvatar(
-            child: Text(widget.name[0].toUpperCase()),
-            radius: 24,
-          );
-        },
-      ),
+            )
+          : CircleAvatar(
+              child: Text(widget.name[0].toUpperCase()),
+              radius: 24,
+            ),
       title: Text(
         widget.name,
         style: TextStyle(
