@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatspot/services/friend/friend_request_service.dart';
-import 'package:chatspot/services/friend/friend_request_debug_service.dart';
 import 'package:chatspot/services/friend/friend_notification_service.dart';
 import 'package:chatspot/views/chat/chat_main/main_chat_screen.dart';
 import 'package:chatspot/services/chat_initialization_service.dart';
