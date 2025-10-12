@@ -63,6 +63,7 @@ class _ChatListItemState extends State<ChatListItem> {
           .get();
 
       if (doc.exists && mounted) {
+        // ignore: unnecessary_cast
         final data = doc.data() as Map<String, dynamic>?;
         setState(() {
           _profilePictureUrl = data?['profilePictureUrl'];
