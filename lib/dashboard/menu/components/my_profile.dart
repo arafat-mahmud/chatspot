@@ -67,6 +67,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false, // This removes the back button
         title: Text('My Profile'),
       ),
       body: Padding(

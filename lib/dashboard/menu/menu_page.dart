@@ -91,6 +91,7 @@ class MenuPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: theme.primaryColor,
+        automaticallyImplyLeading: false, // This removes the back button
         title: Text(
           'Menu',
           style: TextStyle(

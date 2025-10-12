@@ -17,6 +17,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false, // This removes the back button
         title: Text('Settings'),
       ),
       body: ListView(
