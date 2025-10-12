@@ -8,66 +8,93 @@ class ConversationDeleteService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
 
   /// Delete an entire conversation with a user including all chat history
-  static Future<void> deleteConversation({
+  static Future<bool> deleteConversation({
     required String chatId,
     required String otherUserId,
     required String otherUserName,
-    required BuildContext context,
+    BuildContext? context,
   }) async {
     try {
       final currentUser = _auth.currentUser;
       if (currentUser == null) {
-        _showErrorSnackBar(context, 'User not authenticated');
-        return;
+        if (context != null && context.mounted) {
+          _showErrorSnackBar(context, 'User not authenticated');
+        }
+        return false;
       }
 
       final currentUserId = currentUser.uid;
 
-      // Start a batch operation for atomic deletion
-      final batch = _firestore.batch();
+      // Delete messages in smaller batches to avoid timeout
+      await _deleteMessagesInBatches(chatId);
 
-      // 1. Delete all messages in the chat
-      final messagesQuery = await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .get();
+      // Delete the chat document
+      await _firestore.collection('chats').doc(chatId).delete();
 
-      // Delete each message
-      for (final messageDoc in messagesQuery.docs) {
-        batch.delete(messageDoc.reference);
-      }
-
-      // 2. Delete the chat document itself
-      batch.delete(_firestore.collection('chats').doc(chatId));
-
-      // 3. Remove chat reference from both users' chatList if it exists
-      try {
-        // Remove from current user's chatList
-        batch.update(_firestore.collection('users').doc(currentUserId), {
-          'chatList.$otherUserId': FieldValue.delete(),
-        });
-
-        // Remove from other user's chatList
-        batch.update(_firestore.collection('users').doc(otherUserId), {
-          'chatList.$currentUserId': FieldValue.delete(),
-        });
-      } catch (e) {
-        // If chatList fields don't exist, continue without error
-        debugPrint('ChatList update failed (may not exist): $e');
-      }
-
-      // Commit the batch operation
-      await batch.commit();
+      // Remove chat reference from both users' chatList
+      await _removeChatFromUserLists(currentUserId, otherUserId);
 
       // Update the local cache to remove the deleted chat
       final chatCache = ChatCacheService();
       await chatCache.refreshCache();
 
-      _showSuccessSnackBar(context, 'Conversation with $otherUserName deleted');
+      if (context != null && context.mounted) {
+        _showSuccessSnackBar(
+            context, 'Conversation with $otherUserName deleted');
+      }
+
+      return true;
     } catch (e) {
       debugPrint('Error deleting conversation: $e');
-      _showErrorSnackBar(context, 'Failed to delete conversation');
+      if (context != null && context.mounted) {
+        _showErrorSnackBar(context, 'Failed to delete conversation');
+      }
+      return false;
+    }
+  }
+
+  /// Delete messages in smaller batches to avoid Firestore limits
+  static Future<void> _deleteMessagesInBatches(String chatId) async {
+    const batchSize = 100; // Firestore batch limit is 500, using 100 for safety
+
+    while (true) {
+      final messagesQuery = await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .limit(batchSize)
+          .get();
+
+      if (messagesQuery.docs.isEmpty) break;
+
+      final batch = _firestore.batch();
+      for (final messageDoc in messagesQuery.docs) {
+        batch.delete(messageDoc.reference);
+      }
+
+      await batch.commit();
+    }
+  }
+
+  /// Remove chat references from both users' chat lists
+  static Future<void> _removeChatFromUserLists(
+      String currentUserId, String otherUserId) async {
+    try {
+      // Remove from current user's chatList
+      await _firestore.collection('users').doc(currentUserId).update({
+        'chatList.$otherUserId': FieldValue.delete(),
+      });
+    } catch (e) {
+      debugPrint('Failed to update current user chatList: $e');
+    }
+
+    try {
+      // Remove from other user's chatList
+      await _firestore.collection('users').doc(otherUserId).update({
+        'chatList.$currentUserId': FieldValue.delete(),
+      });
+    } catch (e) {
+      debugPrint('Failed to update other user chatList: $e');
     }
   }
 
@@ -223,22 +250,34 @@ class ConversationDeleteService {
   }
 
   static void _showSuccessSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: Duration(seconds: 3),
-        backgroundColor: Colors.green,
-      ),
-    );
+    if (!context.mounted) return;
+
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: Duration(seconds: 3),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Failed to show success snackbar: $e');
+    }
   }
 
   static void _showErrorSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: Duration(seconds: 3),
-        backgroundColor: Colors.red,
-      ),
-    );
+    if (!context.mounted) return;
+
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: Duration(seconds: 3),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Failed to show error snackbar: $e');
+    }
   }
 }

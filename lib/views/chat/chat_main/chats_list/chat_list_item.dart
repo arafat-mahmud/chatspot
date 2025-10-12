@@ -102,6 +102,8 @@ class _ChatListItemState extends State<ChatListItem> {
   }
 
   Future<void> _handleLongPress() async {
+    if (!mounted) return;
+
     // Haptic feedback for long press
     HapticFeedback.mediumImpact();
 
@@ -116,14 +118,22 @@ class _ChatListItemState extends State<ChatListItem> {
       theme: theme,
     );
 
-    if (shouldDelete == true) {
+    if (shouldDelete == true && mounted) {
+      // Store context reference
+      final currentContext = context;
+
       // Delete the entire conversation
-      await ConversationDeleteService.deleteConversation(
+      final success = await ConversationDeleteService.deleteConversation(
         chatId: widget.chatId,
         otherUserId: widget.userId,
         otherUserName: widget.name,
-        context: context,
+        context: currentContext,
       );
+
+      // Optional: Handle success/failure if needed
+      if (!success) {
+        debugPrint('Failed to delete conversation with ${widget.name}');
+      }
     }
   }
 
