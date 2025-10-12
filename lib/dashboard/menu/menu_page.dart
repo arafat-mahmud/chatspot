@@ -13,10 +13,12 @@ import '../../services/cloudinary_service.dart';
 import '../../views/friends/friend_list_screen.dart';
 import '../../services/friend/friend_notification_service.dart';
 import '../../views/chat/chat_main/image_handler.dart';
+import '../../services/cache/user_cache_service.dart';
 
 class MenuPage extends StatelessWidget {
   final CloudinaryService _cloudinaryService = CloudinaryService();
   final ImagePicker _picker = ImagePicker();
+  final UserCacheService _userCacheService = UserCacheService();
 
   MenuPage({super.key});
 
@@ -65,10 +67,21 @@ class MenuPage extends StatelessWidget {
         final imageUrl =
             await _cloudinaryService.uploadProfilePicture(image.path);
 
+        // Update Firestore
         await FirebaseFirestore.instance
             .collection('users')
             .doc(userId)
             .update({'profilePictureUrl': imageUrl});
+
+        // Update cache
+        DocumentSnapshot updatedDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
+        if (updatedDoc.exists) {
+          _userCacheService.updateUserCache(
+              userId, updatedDoc.data() as Map<String, dynamic>);
+        }
 
         scaffoldMessenger.hideCurrentSnackBar();
         scaffoldMessenger.showSnackBar(
@@ -105,11 +118,10 @@ class MenuPage extends StatelessWidget {
       body: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('users')
-                .doc(user?.uid)
-                .get(),
+          FutureBuilder<Map<String, dynamic>>(
+            future: user != null
+                ? _userCacheService.getUserData(user.uid)
+                : Future.value({}),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Container(
@@ -123,14 +135,14 @@ class MenuPage extends StatelessWidget {
                   child: Center(child: Text('Error loading user info')),
                 );
               }
-              if (!snapshot.hasData || !snapshot.data!.exists) {
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
                 return Container(
                   height: 200,
                   child: Center(child: Text('User not found')),
                 );
               }
 
-              var userData = snapshot.data!.data() as Map<String, dynamic>;
+              var userData = snapshot.data!;
               String username = userData['username'] ?? 'No Username';
               String? profilePictureUrl = userData['profilePictureUrl'];
 
@@ -280,6 +292,10 @@ class MenuPage extends StatelessWidget {
             leading: Icon(Icons.logout),
             title: Text('Logout'),
             onTap: () async {
+              // Clear user cache on logout
+              if (user != null) {
+                _userCacheService.clearCache(user.uid);
+              }
               await FirebaseAuth.instance.signOut();
               Navigator.pushReplacement(
                 // ignore: use_build_context_synchronously
