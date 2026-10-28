@@ -24,6 +24,7 @@ class CallNotifications {
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   static const String _askedFullScreenKey = 'callkit_full_screen_asked';
+  static const Duration _minRing = Duration(seconds: 15);
   static StreamSubscription? _backgroundSub;
 
   /// Accept / decline taps, in whichever isolate is listening.
@@ -53,10 +54,14 @@ class CallNotifications {
     DateTime? createdAt,
   }) async {
     if (!isSupported) return;
+    // [createdAt] comes from another clock (server or caller), so a skewed
+    // phone clock can make a fresh call look expired. Ring at least briefly;
+    // the server's `call_ended` push stops it once the caller gives up.
     final age =
         createdAt == null ? Duration.zero : DateTime.now().difference(createdAt);
-    final remaining = CallConfig.ringTimeout - age;
-    if (remaining <= Duration.zero) return;
+    var remaining = CallConfig.ringTimeout - age;
+    if (remaining < _minRing) remaining = _minRing;
+    if (remaining > CallConfig.ringTimeout) remaining = CallConfig.ringTimeout;
 
     try {
       final active = await FlutterCallkitIncoming.activeCalls();

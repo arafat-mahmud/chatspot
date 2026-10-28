@@ -14,6 +14,10 @@ class CallConfig {
   /// How long an unanswered call rings before it is marked as missed.
   static const Duration ringTimeout = Duration(seconds: 45);
 
+  /// How long placing a call may wait for the server; Firestore writes
+  /// otherwise wait forever while offline.
+  static const Duration signalingTimeout = Duration(seconds: 15);
+
   /// How long we wait for media to flow after the callee accepts.
   static const Duration connectTimeout = Duration(seconds: 30);
 

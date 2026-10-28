@@ -97,6 +97,9 @@ class CallSession extends ChangeNotifier {
   /// Caller: rev of the latest offer sent. Callee: unused.
   int _offerRev = 0;
 
+  /// Callee: the offer in the latest call document snapshot.
+  Map<String, dynamic>? _latestOffer;
+
   /// Caller: rev of the latest answer applied. Callee: rev of the latest
   /// offer answered.
   int _handledRev = -1;
@@ -137,7 +140,7 @@ class CallSession extends ChangeNotifier {
         'offer': {'type': offer.type, 'sdp': offer.sdp, 'rev': _offerRev},
         'media': {selfId: _mediaState},
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      }).timeout(CallConfig.signalingTimeout);
       _docCreated = true;
 
       if (_finished) {
@@ -157,6 +160,16 @@ class CallSession extends ChangeNotifier {
       _listenToCallDocument();
       _listenToRemoteCandidates();
       _ringTimer = Timer(CallConfig.ringTimeout, _onRingTimeout);
+    } on TimeoutException {
+      // Offline: the write stays queued and would ring the callee once the
+      // phone reconnects, so queue its cancellation right behind it.
+      _doc.update({
+        'status': CallStatus.failed.name,
+        'endedAt': FieldValue.serverTimestamp(),
+      }).catchError((Object e) {
+        debugPrint('CallSession: queueing cancellation failed: $e');
+      });
+      _fail(const _CallFailure('Call failed: no internet connection'));
     } catch (e) {
       _fail(e);
     }
@@ -195,8 +208,9 @@ class CallSession extends ChangeNotifier {
       await _createPeerConnection();
       if (_finished) return;
 
-      final snapshot = await _doc.get();
-      final offer = snapshot.data()?['offer'] as Map<String, dynamic>?;
+      // Usually already delivered by the document listener while ringing.
+      final offer = _latestOffer ??
+          (await _doc.get()).data()?['offer'] as Map<String, dynamic>?;
       if (offer == null) throw StateError('Call has no offer');
 
       final rev = (offer['rev'] as num?)?.toInt() ?? 0;
@@ -213,7 +227,9 @@ class CallSession extends ChangeNotifier {
         };
       });
       if (accepted != true) {
-        _finishLocally('Call is no longer available');
+        _finishLocally(accepted == null
+            ? "Couldn't answer. Check your internet connection."
+            : 'Call is no longer available');
         return;
       }
       // Hung up while the transaction was in flight.
@@ -526,6 +542,9 @@ class CallSession extends ChangeNotifier {
         notifyListeners();
       }
     }
+
+    final offer = data['offer'];
+    if (offer is Map<String, dynamic>) _latestOffer = offer;
 
     final status = CallStatus.parse(data['status']);
     if (status.isTerminal) {
