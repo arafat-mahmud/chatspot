@@ -32,8 +32,11 @@ lib/
 │   │   ├── signup.dart          # Sign up page
 │   │   └── forgot_password.dart # Password recovery
 │   │
+│   ├── call/                    # Voice & video calls
+│   │   ├── call_screen.dart     # In-call UI (incoming / outgoing / connected)
+│   │   └── call_history_screen.dart # Calls tab (history + call back)
+│   │
 │   ├── chat/                    # Chat-related screens
-│   │   ├── call_screen.dart     # Call interface (basic)
 │   │   └── chat_main/           # Main chat functionality
 │   │       ├── main_chat_screen.dart     # Individual chat screen
 │   │       ├── chat_message_list.dart    # Message list display
@@ -56,7 +59,8 @@ lib/
     ├── cloudinary_service.dart  # Image upload service
     ├── chat_initialization_service.dart # Chat setup service
     ├── chat_cache_service.dart  # Chat caching system
-    └── chat_cache_config.dart   # Cache configuration
+    ├── chat_cache_config.dart   # Cache configuration
+    └── call/                    # WebRTC calls + Firestore signaling (see CALL_SYSTEM_README.md)
 ```
 │
 ```
@@ -162,11 +166,13 @@ lib/
     - Efficient data loading
     - Memory management
 
-### 📞 Communication (Planned)
-13. **Call Features** (Basic structure implemented)
-    - Call screen interface
-    - Call history placeholder
-    - Integration ready for WebRTC
+### 📞 Voice & Video Calls
+13. **Call Features** (see [CALL_SYSTEM_README.md](CALL_SYSTEM_README.md))
+    - HD voice calls (Opus fullband) and HD video calls (720p30) over WebRTC
+    - Incoming call screen with ringtone, busy detection, missed calls
+    - Mute, speaker, camera toggle, camera switch
+    - Automatic reconnect on network change, background calling
+    - Call history in the Calls tab
 
 ### 🔒 Security Features
 14. **Data Protection**
@@ -246,9 +252,10 @@ Then open `ios/Runner.xcworkspace` in Xcode for final build and distribution.
 - Chat Caching & Performance Optimization
 - Search History
 - Emoji Support
+- HD Voice & Video Calling (WebRTC)
 
 🚧 **In Development:**
-- Video/Voice Calling (UI structure ready)
+- Call notifications when the app is closed (FCM / CallKit)
 - Message Encryption
 - Push Notifications
 - Typing Indicators
@@ -298,7 +305,7 @@ Then open `ios/Runner.xcworkspace` in Xcode for final build and distribution.
 
 ## 🐛 Known Issues & Limitations
 
-1. Call functionality is basic (UI only)
+1. Incoming calls only ring while the app is open or recently backgrounded (no push yet)
 2. No offline message queuing yet
 3. Limited file type support (images only)
 4. No message encryption implemented
@@ -350,6 +357,11 @@ For support, email [your-email] or create an issue in the repository.
 - `cached_network_image: ^3.4.1` - Network image caching
 - `cloudinary_flutter: ^1.3.0` - Cloudinary SDK
 - `cloudinary_public: ^0.23.1` - Public Cloudinary API
+
+### Calls
+- `flutter_webrtc` - Peer-to-peer audio/video (WebRTC)
+- `flutter_foreground_task` - Keeps calls alive in the background on Android
+- `flutter_ringtone_player` - Incoming call ringtone
 
 ### Utilities
 - `shared_preferences: ^2.5.2` - Local data storage

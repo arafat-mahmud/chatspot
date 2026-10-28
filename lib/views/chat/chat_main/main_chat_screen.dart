@@ -5,6 +5,8 @@ import 'package:chatspot/views/chat/chat_main/message_input.dart';
 import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:chatspot/views/chat/chat_main/user_profile_screen.dart';
 import 'package:chatspot/views/chat/chat_main/chat_app_bar.dart';
+import 'package:chatspot/services/call/call_model.dart';
+import 'package:chatspot/services/call/call_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -136,6 +138,16 @@ class _UserChatScreenState extends State<UserChatScreen> {
     });
   }
 
+  void _startCall(CallType type) {
+    CallService.instance.startCall(
+      context,
+      calleeId: widget.userId,
+      calleeName: widget.userName,
+      calleePhotoUrl: _profilePictureUrl,
+      type: type,
+    );
+  }
+
   void _openUserProfile() {
     Navigator.push(
       context,
@@ -193,11 +205,13 @@ class _UserChatScreenState extends State<UserChatScreen> {
             actions: [
               IconButton(
                 icon: Icon(Icons.video_call),
-                onPressed: () {},
+                tooltip: 'Video call',
+                onPressed: () => _startCall(CallType.video),
               ),
               IconButton(
                 icon: Icon(Icons.call),
-                onPressed: () {},
+                tooltip: 'Voice call',
+                onPressed: () => _startCall(CallType.audio),
               ),
             ],
           ),

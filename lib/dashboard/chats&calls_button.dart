@@ -1,5 +1,5 @@
 import 'package:chatspot/views/chat/chat_main/chats_list/friend_chat_list.dart'; // Updated to use friend-aware chat list
-import 'package:chatspot/views/chat/call_screen.dart';
+import 'package:chatspot/views/call/call_history_screen.dart';
 import 'package:flutter/material.dart';
 import 'menu/main_drawer.dart';
 import 'menu/menu_page.dart';
@@ -16,7 +16,7 @@ class _HomePageState extends State<HomePage> {
 
   static final List<Widget> _pages = <Widget>[
     FriendChatList(),
-    CallScreen(),
+    CallHistoryScreen(),
   ];
 
   static const List<String> _titles = <String>[

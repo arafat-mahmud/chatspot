@@ -3,6 +3,7 @@ import 'package:chatspot/views/chat/chat_main/main_chat_screen.dart';
 import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:chatspot/services/chat_initialization_service.dart';
 import 'package:chatspot/services/chat_cache_service.dart';
+import 'package:chatspot/services/call/call_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -37,7 +38,10 @@ class MyApp extends StatelessWidget {
 
         // Initialize user chats when user signs in
         if (snapshot.hasData && snapshot.data != null) {
+          final userId = snapshot.data!.uid;
           WidgetsBinding.instance.addPostFrameCallback((_) async {
+            // Listen for incoming calls as soon as the navigator exists.
+            CallService.instance.attach(userId);
             await ChatInitializationService.initializeUserChats();
             // Initialize chat cache after chat initialization
             await ChatCacheService().initializeCache();
@@ -45,6 +49,7 @@ class MyApp extends StatelessWidget {
         } else {
           // Clear cache when user signs out
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            CallService.instance.detach();
             ChatCacheService().clearAndReinitialize();
           });
         }
@@ -53,6 +58,7 @@ class MyApp extends StatelessWidget {
           valueListenable: ThemeService.themeNotifier,
           builder: (context, theme, child) {
             return MaterialApp(
+              navigatorKey: CallService.instance.navigatorKey,
               debugShowCheckedModeBanner: false,
               title: 'Chatnook',
               theme: theme,
