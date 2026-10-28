@@ -1,8 +1,6 @@
-import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'signup.dart'; // Import the SignUpPage
-import '../../dashboard/chats&calls_button.dart'; // Correct the path to the actual location of HomePage
 import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 import 'package:loading_animation_widget/loading_animation_widget.dart'; // Import loading animation
 
@@ -16,246 +14,108 @@ class _SignInPageState extends State<SignInPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   String _errorMessage = '';
-  bool _isLoading = true;
+  bool _isLoading = false;
   bool _obscureText = true;
-  Timer? _sessionTimer;
-  bool _isDisposed = false; // Track disposed state
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeAuthCheck();
-  }
-
-  Future<void> _initializeAuthCheck() async {
-    try {
-      await _handleReturningUser();
-    } catch (e) {
-      if (!_isDisposed && mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Error initializing authentication check';
-        });
-      }
-    }
-  }
-
-  Future<void> _checkLastLogin(User user) async {
-    try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      final lastLogin = userDoc['lastLogin'] as Timestamp?;
-      final now = Timestamp.now();
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({'lastLogin': now});
-
-      if (lastLogin != null) {
-        final difference = now.toDate().difference(lastLogin.toDate());
-        if (difference.inDays >= 7) {
-          await _auth.signOut();
-          if (!_isDisposed && mounted) {
-            setState(() {
-              _isLoading = false;
-              _errorMessage = 'Session expired. Please sign in again.';
-            });
-          }
-        }
-      }
-    } catch (e) {
-      if (!_isDisposed && mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Error checking session. Please sign in again.';
-        });
-      }
-    }
-  }
-
-  Future<void> _handleReturningUser() async {
-    final user = _auth.currentUser;
-    if (user != null && user.emailVerified) {
-      if (!_isDisposed && mounted) {
-        setState(() => _isLoading = true);
-      }
-
-      try {
-        await _checkLastLogin(user);
-        if (!_isDisposed && mounted && _auth.currentUser != null) {
-          _startSessionTimer(user);
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => HomePage()),
-          );
-        }
-      } catch (e) {
-        if (!_isDisposed && mounted) {
-          setState(() => _isLoading = false);
-        }
-      }
-    } else {
-      await _auth.signOut();
-      if (!_isDisposed && mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  void _startSessionTimer(User user) {
-    _sessionTimer?.cancel();
-    _sessionTimer = Timer.periodic(Duration(hours: 1), (timer) async {
-      if (_isDisposed || !mounted) {
-        timer.cancel();
-        return;
-      }
-
-      try {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        final lastLogin = userDoc['lastLogin'] as Timestamp?;
-        if (lastLogin != null) {
-          final difference = DateTime.now().difference(lastLogin.toDate());
-          if (difference.inDays >= 7) {
-            timer.cancel();
-            await _auth.signOut();
-            if (!_isDisposed && mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => SignInPage()),
-              );
-            }
-          }
-        }
-      } catch (e) {
-        timer.cancel();
-      }
-    });
-  }
+  bool _canResendVerification = false;
 
   @override
   void dispose() {
-    _isDisposed = true;
     _emailController.dispose();
     _passwordController.dispose();
-    _sessionTimer?.cancel();
     super.dispose();
   }
 
-  void _signIn() async {
-    if (_isDisposed || !mounted) return;
+  /// Signing in is one auth call plus one write. The auth gate opens the app
+  /// as soon as Firebase reports the verified user; nothing to navigate.
+  Future<void> _signIn() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _errorMessage = 'Enter your email and password.');
+      return;
+    }
 
     setState(() {
       _isLoading = true;
       _errorMessage = '';
+      _canResendVerification = false;
     });
 
     try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-
-      User? user = userCredential.user;
-      if (user == null || _isDisposed || !mounted) {
-        setState(() {
-          _errorMessage = 'Sign in failed. Please try again.';
-          _isLoading = false;
-        });
-        return;
-      }
+      final credential = await _auth.signInWithEmailAndPassword(
+          email: email, password: password);
+      final user = credential.user!;
 
       if (!user.emailVerified) {
         await _auth.signOut();
-        if (!_isDisposed && mounted) {
-          setState(() {
-            _errorMessage = 'Please verify your email first.';
-            _isLoading = false;
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = 'Please verify your email first. '
+              'Check your inbox for the link.';
+          _canResendVerification = true;
+          _isLoading = false;
+        });
         return;
       }
 
-      // Get or create user document
-      DocumentReference userDocRef =
-          FirebaseFirestore.instance.collection('users').doc(user.uid);
-
-      // Use set with merge to create or update the document
-      await userDocRef.set({
+      FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'email': user.email,
         'emailVerified': true,
-        'lastLogin': FieldValue.serverTimestamp(), // Use server timestamp
-      }, SetOptions(merge: true));
-
-      // Now get the document to check if it exists
-      DocumentSnapshot userDoc = await userDocRef.get();
-
-      if (!userDoc.exists) {
-        await _auth.signOut();
-        if (!_isDisposed && mounted) {
-          setState(() {
-            _errorMessage =
-                'Account not properly set up. Please sign up again.';
-            _isLoading = false;
-          });
-        }
-        return;
-      }
-
-      // Start session timer
-      if (_isDisposed || !mounted) return;
-      _startSessionTimer(user);
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
+        'lastLogin': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true)).catchError((Object e) {
+        debugPrint('Recording sign-in failed: $e');
+      });
     } on FirebaseAuthException catch (e) {
-      if (_isDisposed || !mounted) return;
-
-      String errorMessage;
-      switch (e.code) {
-        case 'user-not-found':
-          errorMessage = 'No account found. Please sign up first.';
-          break;
-        case 'wrong-password':
-          errorMessage = 'Incorrect password. Please try again.';
-          break;
-        case 'invalid-email':
-          errorMessage = 'Invalid email format. Please check your email.';
-          break;
-        case 'user-disabled':
-          errorMessage = 'Account disabled. Contact support.';
-          break;
-        case 'too-many-requests':
-          errorMessage = 'Too many attempts. Try again later.';
-          break;
-        default:
-          errorMessage = 'Login failed. Please try again.';
-      }
-
+      if (!mounted) return;
       setState(() {
-        _errorMessage = errorMessage;
+        _errorMessage = switch (e.code) {
+          'user-not-found' => 'No account found. Please sign up first.',
+          'wrong-password' ||
+          'invalid-credential' =>
+            'Incorrect email or password. Please try again.',
+          'invalid-email' => 'Invalid email format. Please check your email.',
+          'user-disabled' => 'Account disabled. Contact support.',
+          'too-many-requests' => 'Too many attempts. Try again later.',
+          'network-request-failed' => 'No internet connection.',
+          _ => 'Login failed. Please try again.',
+        };
         _isLoading = false;
       });
     } catch (e) {
-      if (!_isDisposed && mounted) {
-        setState(() {
-          _errorMessage = 'An unexpected error occurred.';
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'An unexpected error occurred.';
+        _isLoading = false;
+      });
     }
   }
 
-  // [REST OF YOUR EXISTING BUILD METHOD REMAINS EXACTLY THE SAME]
+  /// Unverified accounts are signed out right away, so sign in briefly with
+  /// the same credentials to send a fresh link.
+  Future<void> _resendVerification() async {
+    setState(() => _isLoading = true);
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      await credential.user?.sendEmailVerification();
+      await _auth.signOut();
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Verification link sent. Check your inbox.';
+        _canResendVerification = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage =
+            "Couldn't send the link right now. Try again in a minute.");
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -601,9 +461,15 @@ class _SignInPageState extends State<SignInPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: Text(
                     _errorMessage,
-                    style: TextStyle(color: Colors.red),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.error),
                     textAlign: TextAlign.center,
                   ),
+                ),
+              if (_canResendVerification)
+                TextButton(
+                  onPressed: _isLoading ? null : _resendVerification,
+                  child: const Text('Resend verification link'),
                 ),
             ],
           ),

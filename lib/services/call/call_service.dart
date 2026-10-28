@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:chatspot/services/cache/user_cache_service.dart';
-import 'package:chatspot/services/friend/friend_request_service.dart';
+import 'package:chatspot/services/friend/friend_repository.dart';
+import 'package:chatspot/services/user/user_repository.dart';
 import 'package:chatspot/views/call/call_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -125,12 +125,11 @@ class CallService {
 
     _isStarting = true;
     try {
-      final results = await Future.wait([
-        FriendRequestService.areFriends(userId, calleeId),
-        UserCacheService().getUserData(userId),
-      ]);
-      final areFriends = results[0] as bool;
-      final me = results[1] as Map<String, dynamic>;
+      // Both answered from memory; no reads.
+      final areFriends =
+          await FriendRepository.instance.isFriendConfirmed(calleeId);
+      final me = UserRepository.instance.me.value ??
+          await UserRepository.instance.get(userId);
 
       if (!areFriends) {
         messenger.showSnackBar(
@@ -146,8 +145,9 @@ class CallService {
       final call = CallModel(
         id: _calls.doc().id,
         callerId: userId,
-        callerName: me['name'] ?? 'Unknown',
-        callerPhotoUrl: me['profilePictureUrl'],
+        callerName: me?.displayName ?? 'Unknown',
+        callerPhotoUrl:
+            (me?.photoUrl.isNotEmpty ?? false) ? me!.photoUrl : null,
         calleeId: calleeId,
         calleeName: calleeName,
         calleePhotoUrl:

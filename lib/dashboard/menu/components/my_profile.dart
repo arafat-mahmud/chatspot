@@ -1,254 +1,246 @@
+import 'dart:async';
+
+import 'package:chatspot/dashboard/menu/components/account_menu.dart';
+import 'package:chatspot/services/user/profile_service.dart';
+import 'package:chatspot/services/user/user_profile.dart';
+import 'package:chatspot/services/user/user_repository.dart';
+import 'package:chatspot/views/common/user_avatar.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+enum _UsernameState { unchanged, invalid, checking, available, taken, error }
 
 class ProfilePage extends StatefulWidget {
   @override
-  _ProfilePageState createState() => _ProfilePageState();
+  State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  late TextEditingController _nameController;
-  final TextEditingController _usernameController = TextEditingController();
-  String _dob = ''; // Add this for date of birth
-  String _gender = ''; // Add this for gender
+  static final RegExp _usernamePattern = RegExp(r'^[a-z0-9_]{5,20}$');
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  bool _isLoading = true;
-  String _originalUsername = '';
-  String _usernameAvailabilityMessage = '';
-  bool _isUsernameAvailable = false;
+  final _formKey = GlobalKey<FormState>();
+  late final UserProfile? _initial = UserRepository.instance.me.value;
+  late final TextEditingController _nameController =
+      TextEditingController(text: _initial?.name ?? '');
+  late final TextEditingController _usernameController = TextEditingController(
+      text: (_initial?.username ?? '').replaceFirst('@', ''));
+
+  _UsernameState _usernameState = _UsernameState.unchanged;
+  Timer? _usernameDebounce;
+  int _checkGeneration = 0;
+  bool _saving = false;
+
+  String get _originalUsername => _initial?.username ?? '';
 
   @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController();
-    _fetchUserData();
-    _testUsernameCheck(); // Call the test function here
+  void dispose() {
+    _usernameDebounce?.cancel();
+    _nameController.dispose();
+    _usernameController.dispose();
+    super.dispose();
   }
 
-  void _fetchUserData() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        DocumentSnapshot userDoc =
-            await _firestore.collection('users').doc(user.uid).get();
-        if (userDoc.exists) {
-          _nameController.text = userDoc['name'] ?? '';
-          String savedUsername = userDoc['username'] ?? '';
-          _originalUsername = savedUsername;
-          _usernameController.text = savedUsername.replaceFirst('@', '');
-
-          // Add these lines to fetch dob and gender
-          _dob = userDoc['dob'] ?? 'Not specified';
-          _gender = userDoc['gender'] ?? 'Not specified';
-        } else {
-          _nameController.text = '';
-          _usernameController.text = '';
-          _dob = 'Not specified';
-          _gender = 'Not specified';
-        }
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      print("Error fetching user data: $e");
-      setState(() {
-        _isLoading = false;
-      });
+  void _onUsernameChanged(String value) {
+    _usernameDebounce?.cancel();
+    final username = value.trim().toLowerCase();
+    if ('@$username' == _originalUsername) {
+      setState(() => _usernameState = _UsernameState.unchanged);
+      return;
     }
+    if (!_usernamePattern.hasMatch(username)) {
+      setState(() => _usernameState = _UsernameState.invalid);
+      return;
+    }
+    setState(() => _usernameState = _UsernameState.checking);
+    // One small read once typing pauses, not one per keystroke.
+    final generation = ++_checkGeneration;
+    _usernameDebounce = Timer(const Duration(milliseconds: 500), () async {
+      _UsernameState result;
+      try {
+        result = await ProfileService.isUsernameTaken('@$username')
+            ? _UsernameState.taken
+            : _UsernameState.available;
+      } catch (_) {
+        result = _UsernameState.error;
+      }
+      if (mounted && generation == _checkGeneration) {
+        setState(() => _usernameState = result);
+      }
+    });
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final name = _nameController.text.trim();
+    final username = '@${_usernameController.text.trim().toLowerCase()}';
+    final usernameChanged = username != _originalUsername;
+    if (usernameChanged && _usernameState != _UsernameState.available) return;
+
+    setState(() => _saving = true);
+    await ProfileService.update(
+      name: name != _initial?.name ? name : null,
+      username: usernameChanged ? username : null,
+    );
+    if (!mounted) return;
+    setState(() => _saving = false);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Profile updated'),
+      behavior: SnackBarBehavior.floating,
+    ));
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Center(child: CircularProgressIndicator());
-    }
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final canSave = !_saving &&
+        (_usernameState == _UsernameState.unchanged ||
+            _usernameState == _UsernameState.available);
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false, // This removes the back button
-        title: Text('My Profile'),
+        title: const Text('My profile'),
+        actions: [
+          TextButton(
+            onPressed: canSave ? _save : null,
+            child: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Save'),
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: _usernameController,
-              decoration: InputDecoration(
-                labelText: 'Username',
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (value) async {
-                String username = value.trim().toLowerCase();
-                String usernameWithAt = '@$username';
-                if (username.isNotEmpty) {
-                  if (!RegExp(r'^[a-z0-9_]{5,}$').hasMatch(username)) {
-                    setState(() {
-                      _usernameAvailabilityMessage =
-                          'Username must be at least 5 characters long and can contain lowercase letters, numbers, and underscores.';
-                      _isUsernameAvailable = false;
-                    });
-                  } else {
-                    final usernameExists =
-                        await _checkUsernameAvailability(usernameWithAt);
-                    setState(() {
-                      _usernameAvailabilityMessage = usernameExists
-                          ? 'Username is already taken.'
-                          : 'Username is available.';
-                      _isUsernameAvailable = !usernameExists;
-                      print(
-                          'Username availability: $_isUsernameAvailable, Username: $usernameWithAt');
-                    });
-                  }
-                } else {
-                  setState(() {
-                    _usernameAvailabilityMessage = '';
-                    _isUsernameAvailable = false;
-                  });
-                }
-              },
-            ),
-            SizedBox(height: 8),
-            Text(
-              _usernameAvailabilityMessage,
-              style: TextStyle(
-                color: _usernameAvailabilityMessage.contains('available')
-                    ? Colors.green
-                    : Colors.red,
-              ),
-            ),
-            SizedBox(height: 16),
-            // Add these new fields for Date of Birth and Gender
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                children: [
-                  Text('Date of Birth: '),
-                  Text(
-                    _dob,
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 16),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                children: [
-                  Text('Gender: '),
-                  Text(
-                    _gender,
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                final user = FirebaseAuth.instance.currentUser;
-                if (user != null) {
-                  try {
-                    // Always allow name to be updated
-                    String name = _nameController.text.trim();
-
-                    // Check if username is modified and available
-                    String username =
-                        _usernameController.text.trim().toLowerCase();
-                    String usernameWithAt = '@$username';
-                    bool isUsernameModified =
-                        usernameWithAt != _originalUsername;
-
-                    if (isUsernameModified) {
-                      if (!_isUsernameAvailable) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Username is not available.'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-                    }
-
-                    // Update user data
-                    await _firestore.collection('users').doc(user.uid).set({
-                      'name': name,
-                      'username': isUsernameModified
-                          ? usernameWithAt
-                          : _originalUsername,
-                    }, SetOptions(merge: true));
-
-                    print("User data updated successfully!");
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Profile updated successfully!'),
-                        backgroundColor: Colors.green,
+      body: ValueListenableBuilder<UserProfile?>(
+        valueListenable: UserRepository.instance.me,
+        builder: (context, me, _) => Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Center(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    UserAvatar(
+                      name: me?.displayName ?? '',
+                      photoUrl: me?.photoUrl ?? '',
+                      radius: 48,
+                    ),
+                    Positioned(
+                      right: -4,
+                      bottom: -4,
+                      child: IconButton.filled(
+                        icon: const Icon(Icons.camera_alt, size: 18),
+                        tooltip: 'Change photo',
+                        onPressed: () => changeProfilePhoto(context),
                       ),
-                    );
-
-                    // Update original username if it was changed
-                    if (isUsernameModified) {
-                      setState(() {
-                        _originalUsername = usernameWithAt;
-                      });
-                    }
-                  } catch (error) {
-                    print("Failed to update user data: $error");
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to update profile.'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
-              child: Text('Save Changes'),
-            ),
-          ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              TextFormField(
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                  prefixIcon: Icon(Icons.person_outline),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => (value?.trim().length ?? 0) < 2
+                    ? 'Enter your name'
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _usernameController,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  labelText: 'Username',
+                  prefixText: '@',
+                  prefixIcon: const Icon(Icons.alternate_email),
+                  border: const OutlineInputBorder(),
+                  helperText: _usernameHelper(),
+                  helperStyle: TextStyle(color: _usernameColor(scheme)),
+                  suffixIcon: _usernameSuffix(scheme),
+                ),
+                onChanged: _onUsernameChanged,
+              ),
+              const SizedBox(height: 24),
+              _readOnlyTile(Icons.cake_outlined, 'Date of birth', me?.dob),
+              _readOnlyTile(Icons.wc_outlined, 'Gender', me?.gender),
+              _readOnlyTile(Icons.mail_outline, 'Email', me?.email),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Future<bool> _checkUsernameAvailability(String username) async {
-    try {
-      final userDocs = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: username)
-          .get();
-      return userDocs.docs.isNotEmpty;
-    } catch (e) {
-      print("Error checking username availability: $e");
-      return false;
+  String? _usernameHelper() {
+    switch (_usernameState) {
+      case _UsernameState.unchanged:
+        return _originalUsername.isEmpty
+            ? 'Pick a username so friends can find you'
+            : null;
+      case _UsernameState.invalid:
+        return '5–20 characters: lowercase letters, numbers and _';
+      case _UsernameState.checking:
+        return 'Checking…';
+      case _UsernameState.available:
+        return 'Available';
+      case _UsernameState.taken:
+        return 'Already taken';
+      case _UsernameState.error:
+        return "Couldn't check right now. Try again.";
     }
   }
 
-  void _testUsernameCheck() async {
-    // Use your real username for testing
-    bool taken = await _checkUsernameAvailability('@testusername');
-    print('Test username check: @testusername is taken: $taken');
-    bool available = await _checkUsernameAvailability('@testusernamenotTaken');
-    print('Test username check: @testusernamenotTaken is taken: $available');
+  Color? _usernameColor(ColorScheme scheme) {
+    switch (_usernameState) {
+      case _UsernameState.available:
+        return Colors.green.shade600;
+      case _UsernameState.invalid:
+      case _UsernameState.taken:
+      case _UsernameState.error:
+        return scheme.error;
+      default:
+        return null;
+    }
+  }
+
+  Widget? _usernameSuffix(ColorScheme scheme) {
+    switch (_usernameState) {
+      case _UsernameState.checking:
+        return const Padding(
+          padding: EdgeInsets.all(14),
+          child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2)),
+        );
+      case _UsernameState.available:
+        return Icon(Icons.check_circle, color: Colors.green.shade600);
+      case _UsernameState.taken:
+      case _UsernameState.invalid:
+        return Icon(Icons.error_outline, color: scheme.error);
+      default:
+        return null;
+    }
+  }
+
+  Widget _readOnlyTile(IconData icon, String label, String? value) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon),
+      title: Text(label, style: Theme.of(context).textTheme.labelMedium),
+      subtitle: Text(
+        (value == null || value.isEmpty) ? 'Not specified' : value,
+        style: Theme.of(context).textTheme.bodyLarge,
+      ),
+    );
   }
 }

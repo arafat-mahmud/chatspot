@@ -1,11 +1,11 @@
 import 'package:chatspot/dashboard/chats&calls_button.dart';
 import 'package:chatspot/views/chat/chat_main/main_chat_screen.dart';
 import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
-import 'package:chatspot/services/chat_initialization_service.dart';
-import 'package:chatspot/services/chat_cache_service.dart';
+import 'package:chatspot/services/app_messenger.dart';
 import 'package:chatspot/services/call/call_service.dart';
 import 'package:chatspot/services/notification/push_notification_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:chatspot/services/session/session_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'views/auth/signin.dart';
@@ -20,8 +20,15 @@ void main() async {
   try {
     await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform);
+    // Every screen reads through Firestore's on-device cache: lists appear
+    // instantly on launch and work offline, and resumed listeners only pay
+    // for what changed. Must be set before the first Firestore call.
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: 200 * 1024 * 1024,
+    );
   } catch (e) {
-    print('Firebase init error: $e');
+    debugPrint('Firebase init error: $e');
   }
 
   await ThemeService.init();
@@ -29,6 +36,7 @@ void main() async {
   // Before runApp: tapping Accept on the system call screen can be what
   // launched the app.
   CallService.instance.init();
+  SessionService.instance.init();
 
   runApp(MyApp());
 }
@@ -36,58 +44,62 @@ void main() async {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        ThemeService.updateCurrentUser(snapshot.data?.uid);
-
-        // Initialize user chats when user signs in
-        if (snapshot.hasData && snapshot.data != null) {
-          final userId = snapshot.data!.uid;
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            // Listen for incoming calls as soon as the navigator exists.
-            CallService.instance.attach(userId);
-            PushNotificationService.instance.attach(userId);
-            await ChatInitializationService.initializeUserChats();
-            // Initialize chat cache after chat initialization
-            await ChatCacheService().initializeCache();
-          });
-        } else {
-          // Clear cache when user signs out
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            CallService.instance.detach();
-            PushNotificationService.instance.detach();
-            ChatCacheService().clearAndReinitialize();
-          });
-        }
-
-        return ValueListenableBuilder<ThemeData>(
-          valueListenable: ThemeService.themeNotifier,
-          builder: (context, theme, child) {
-            return MaterialApp(
-              navigatorKey: CallService.instance.navigatorKey,
-              debugShowCheckedModeBanner: false,
-              title: 'Chatnook',
-              theme: theme,
-              home: snapshot.hasData ? HomePage() : SignInPage(),
-              onGenerateRoute: (settings) {
-                if (settings.name == '/user-chat-screen') {
-                  final args = settings.arguments as Map<String, dynamic>;
-                  return MaterialPageRoute(
-                    builder: (context) => UserChatScreen(
-                      userId: args['userId'],
-                      userName: args['userName'],
-                    ),
-                  );
-                }
-                return null;
-              },
-              routes: {
-                '/forgot-password': (context) => ForgotPasswordScreen(),
-              },
-            );
+    return ValueListenableBuilder<ThemeData>(
+      valueListenable: ThemeService.themeNotifier,
+      builder: (context, theme, child) {
+        return MaterialApp(
+          navigatorKey: CallService.instance.navigatorKey,
+          scaffoldMessengerKey: AppMessenger.key,
+          debugShowCheckedModeBanner: false,
+          title: 'Chatnook',
+          theme: theme,
+          home: const AuthGate(),
+          onGenerateRoute: (settings) {
+            if (settings.name == '/user-chat-screen') {
+              final args = settings.arguments as Map<String, dynamic>;
+              return MaterialPageRoute(
+                builder: (context) => UserChatScreen(
+                  userId: args['userId'],
+                  userName: args['userName'],
+                ),
+              );
+            }
+            return null;
+          },
+          routes: {
+            '/forgot-password': (context) => ForgotPasswordScreen(),
           },
         );
+      },
+    );
+  }
+}
+
+/// Shows the app for a signed-in, verified user and the sign-in screen
+/// otherwise. Screens never navigate on sign-in or sign-out themselves.
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final session = SessionService.instance;
+    return ListenableBuilder(
+      listenable: Listenable.merge([session.resolved, session.uid]),
+      builder: (context, _) {
+        if (!session.resolved.value) {
+          return Scaffold(
+            body: Center(
+              child: Icon(
+                Icons.forum_rounded,
+                size: 72,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          );
+        }
+        final uid = session.uid.value;
+        // A fresh home per account, so no state leaks between accounts.
+        return uid == null ? SignInPage() : HomePage(key: ValueKey(uid));
       },
     );
   }

@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:chatspot/services/chat_cache_service.dart';
 
 class ConversationDeleteService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -23,20 +22,11 @@ class ConversationDeleteService {
         return false;
       }
 
-      final currentUserId = currentUser.uid;
-
       // Delete messages in smaller batches to avoid timeout
       await _deleteMessagesInBatches(chatId);
 
-      // Delete the chat document
+      // The chat list listener drops it by itself.
       await _firestore.collection('chats').doc(chatId).delete();
-
-      // Remove chat reference from both users' chatList
-      await _removeChatFromUserLists(currentUserId, otherUserId);
-
-      // Update the local cache to remove the deleted chat
-      final chatCache = ChatCacheService();
-      await chatCache.refreshCache();
 
       if (context != null && context.mounted) {
         _showSuccessSnackBar(
@@ -73,28 +63,6 @@ class ConversationDeleteService {
       }
 
       await batch.commit();
-    }
-  }
-
-  /// Remove chat references from both users' chat lists
-  static Future<void> _removeChatFromUserLists(
-      String currentUserId, String otherUserId) async {
-    try {
-      // Remove from current user's chatList
-      await _firestore.collection('users').doc(currentUserId).update({
-        'chatList.$otherUserId': FieldValue.delete(),
-      });
-    } catch (e) {
-      debugPrint('Failed to update current user chatList: $e');
-    }
-
-    try {
-      // Remove from other user's chatList
-      await _firestore.collection('users').doc(otherUserId).update({
-        'chatList.$currentUserId': FieldValue.delete(),
-      });
-    } catch (e) {
-      debugPrint('Failed to update other user chatList: $e');
     }
   }
 

@@ -1,714 +1,392 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:chatspot/services/friend/friend_request_service.dart';
-import 'package:chatspot/services/friend/friend_notification_service.dart';
+import 'package:chatspot/services/friend/friend_models.dart';
+import 'package:chatspot/services/friend/friend_repository.dart';
 import 'package:chatspot/views/chat/chat_main/main_chat_screen.dart';
-import 'package:chatspot/services/chat_initialization_service.dart';
+import 'package:chatspot/views/chat/chat_main/user_profile_screen.dart';
+import 'package:chatspot/views/common/presence_widgets.dart';
+import 'package:chatspot/views/common/state_views.dart';
+import 'package:chatspot/views/common/user_avatar.dart';
 import 'package:chatspot/views/no_back_button_app_bar.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:chatspot/views/search_bar/friend_aware_search_page.dart';
 import 'package:intl/intl.dart';
 import '../chat/chat_main/image_handler.dart';
 
+/// Friends and friend requests. Everything here comes from
+/// [FriendRepository]'s live in-memory state: opening the screen, switching
+/// tabs and filtering cost no reads.
 class FriendListScreen extends StatefulWidget {
+  const FriendListScreen({super.key, this.initialTab = 0});
+
+  /// 0: friends, 1: requests.
+  final int initialTab;
+
   @override
-  _FriendListScreenState createState() => _FriendListScreenState();
+  State<FriendListScreen> createState() => _FriendListScreenState();
 }
 
 class _FriendListScreenState extends State<FriendListScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  int _refreshKey = 0;
-
-  // Search functionality
-  TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+  final FriendRepository _friends = FriendRepository.instance;
+  late final TabController _tabController = TabController(
+      length: 2, vsync: this, initialIndex: widget.initialTab);
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
-
-    // Listen for tab changes to mark requests as seen when the Requests tab is selected
-    _tabController.addListener(_handleTabSelection);
-
-    // If screen is opened directly to the Requests tab, mark all as seen
-    if (_tabController.index == 1) {
-      FriendNotificationService.markAllRequestsAsSeen();
-    }
-
-    // Add listener for search updates
-    _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-      });
-    });
-  }
-
-  void _handleTabSelection() {
-    // When user views the Requests tab (index 1), mark all requests as seen
-    if (_tabController.index == 1) {
-      FriendNotificationService.markAllRequestsAsSeen();
-    }
-  }
-
-  void _refreshData() {
-    setState(() {
-      _refreshKey++;
-    });
-  }
-
-  String _formatRequestDate(dynamic timestamp) {
-    if (timestamp == null) return 'Recently';
-
-    try {
-      DateTime date = timestamp.toDate();
-      DateTime now = DateTime.now();
-      Duration difference = now.difference(date);
-
-      if (difference.inDays > 7) {
-        return DateFormat('MMM dd, yyyy').format(date);
-      } else if (difference.inDays > 0) {
-        return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
-      } else if (difference.inHours > 0) {
-        return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
-      } else if (difference.inMinutes > 0) {
-        return '${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} ago';
-      } else {
-        return 'Just now';
-      }
-    } catch (e) {
-      return 'Recently';
-    }
+    _tabController.addListener(_onTabChanged);
+    _onTabChanged();
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_handleTabSelection);
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
+  void _onTabChanged() {
+    // Viewing requests clears the badge (writes only unseen ones).
+    if (_tabController.index == 1) _friends.markRequestsSeen();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final onBar = theme.appBarTheme.titleTextStyle?.color ?? Colors.white;
 
-    return Scaffold(
-      appBar: NoBackButtonAppBar(
-        title: 'Friends',
-        backgroundColor: theme.primaryColor,
-        titleColor: theme.appBarTheme.titleTextStyle?.color ?? Colors.white,
-        iconTheme:
-            theme.appBarTheme.iconTheme ?? IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _refreshData,
-            tooltip: 'Refresh',
+    return ValueListenableBuilder<FriendsState>(
+      valueListenable: _friends.state,
+      builder: (context, state, _) => Scaffold(
+        appBar: NoBackButtonAppBar(
+          title: 'Friends',
+          backgroundColor: theme.primaryColor,
+          titleColor: onBar,
+          iconTheme:
+              theme.appBarTheme.iconTheme ?? IconThemeData(color: onBar),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.person_add_alt_1_outlined),
+              tooltip: 'Find people',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => FriendAwareSearchPage()),
+              ),
+            ),
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            labelColor: onBar,
+            unselectedLabelColor: onBar.withValues(alpha: 0.7),
+            indicatorColor: onBar,
+            tabs: [
+              Tab(
+                text: state.friends.isEmpty
+                    ? 'Friends'
+                    : 'Friends (${state.friends.length})',
+              ),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Requests'),
+                    if (state.incoming.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      CountBadge(state.incoming.length),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-        bottom: TabBar(
+        ),
+        body: TabBarView(
           controller: _tabController,
-          tabs: [
-            Tab(text: 'Friends'),
-            StreamBuilder<int>(
-              stream: FriendNotificationService.getPendingRequestCount(),
-              builder: (context, snapshot) {
-                final pendingCount = snapshot.data ?? 0;
-                return Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Requests'),
-                      if (pendingCount > 0) ...[
-                        SizedBox(width: 8),
-                        Text(
-                          '$pendingCount',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-          labelColor: theme.appBarTheme.titleTextStyle?.color ?? Colors.white,
-          unselectedLabelColor: Colors.grey[300],
-          indicatorColor: Colors.white,
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildFriendsList(),
-          _buildRequestsList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFriendsList() {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      key: ValueKey(_refreshKey),
-      stream: FriendRequestService.getFriendsList(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          print('Friends list error: ${snapshot.error}');
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: Colors.red,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Error loading friends',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.red,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Please check your internet connection',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-                SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      // This will rebuild the widget and retry the stream
-                    });
-                  },
-                  child: Text('Retry'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final allFriends = snapshot.data ?? [];
-
-        // Apply search filtering
-        final List<Map<String, dynamic>> filteredFriends = _searchQuery.isEmpty
-            ? allFriends
-            : allFriends.where((friend) {
-                final name = (friend['name'] ?? '').toLowerCase();
-                final username = (friend['username'] ?? '').toLowerCase();
-                return name.contains(_searchQuery) ||
-                    username.contains(_searchQuery);
-              }).toList();
-
-        // Show empty state when there are no friends at all
-        if (allFriends.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.people_outline,
-                  size: 64,
-                  color: Colors.grey,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'No friends yet',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Search for users and send friend requests',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return Column(
           children: [
-            // Search bar
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _searchController,
-                    textInputAction: TextInputAction.search,
-                    decoration: InputDecoration(
-                      hintText: 'Search friends by name or username...',
-                      prefixIcon: Icon(Icons.search),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                // Hide keyboard when clearing search
-                                FocusScope.of(context).unfocus();
-                              },
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      filled: true,
-                      fillColor: Colors.grey.withOpacity(0.1),
-                      contentPadding: EdgeInsets.symmetric(vertical: 4.0),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide.none,
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide.none,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value.toLowerCase();
-                      });
-                    },
-                  ),
-                  if (_searchQuery.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0, left: 8.0),
-                      child: Text(
-                        'Found ${filteredFriends.length} friend${filteredFriends.length != 1 ? 's' : ''}',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-
-            // Show message when search has no results
-            if (_searchQuery.isNotEmpty && filteredFriends.isEmpty)
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.search_off,
-                        size: 64,
-                        color: Colors.grey,
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'No matching friends found',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Try a different search term',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-            // Friend list
-            if (filteredFriends.isNotEmpty)
-              Expanded(
-                child: ListView.builder(
-                  itemCount: filteredFriends.length,
-                  itemBuilder: (context, index) {
-                    final friend = filteredFriends[index];
-                    return _buildFriendTile(friend);
-                  },
-                ),
-              ),
+            _buildFriends(state),
+            _buildRequests(state),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _buildFriendTile(Map<String, dynamic> friend) {
-    return ListTile(
-      leading: GestureDetector(
-        onTap: friend['profilePic']?.isNotEmpty == true
-            ? () {
-                ImageHandler.showFullScreenImage(context, friend['profilePic']);
-              }
-            : null,
-        child: CircleAvatar(
-          radius: 24,
-          backgroundImage: friend['profilePic']?.isNotEmpty == true
-              ? CachedNetworkImageProvider(friend['profilePic'])
-              : null,
-          backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-          child: friend['profilePic']?.isEmpty != false
-              ? Text(
-                  friend['name']?.isNotEmpty == true
-                      ? friend['name'][0].toUpperCase()
-                      : '?',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                )
-              : null,
+  // ---------------------------------------------------------------------------
+  // Friends tab
+  // ---------------------------------------------------------------------------
+
+  Widget _buildFriends(FriendsState state) {
+    if (!state.loaded) return const ListSkeleton();
+    if (state.friends.isEmpty) {
+      return EmptyState(
+        icon: Icons.people_outline_rounded,
+        title: 'No friends yet',
+        message: 'Find people by name or @username and send a request.',
+        actionLabel: 'Find people',
+        onAction: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => FriendAwareSearchPage()),
         ),
+      );
+    }
+
+    final query = _query.toLowerCase();
+    final friends = query.isEmpty
+        ? state.friends
+        : state.friends
+            .where((f) =>
+                f.name.toLowerCase().contains(query) ||
+                f.username.toLowerCase().contains(query))
+            .toList();
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: SearchBar(
+            controller: _searchController,
+            hintText: 'Search friends',
+            leading: const Icon(Icons.search),
+            elevation: const WidgetStatePropertyAll(0),
+            trailing: [
+              if (_query.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _query = '');
+                  },
+                ),
+            ],
+            onChanged: (value) => setState(() => _query = value.trim()),
+          ),
+        ),
+        Expanded(
+          child: friends.isEmpty
+              ? const EmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: 'No matches',
+                  message: 'Try a different name or username.',
+                )
+              : ListView.builder(
+                  itemCount: friends.length,
+                  itemBuilder: (context, index) =>
+                      _buildFriendTile(friends[index]),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFriendTile(Friend friend) {
+    return ListTile(
+      leading: PresenceAvatar(
+        uid: friend.uid,
+        name: friend.displayName,
+        photoUrl: friend.photoUrl,
+        onTap: friend.photoUrl.isEmpty
+            ? null
+            : () => ImageHandler.showFullScreenImage(context, friend.photoUrl),
       ),
-      title: Text(friend['name'] ?? 'Unknown'),
-      subtitle: Text(friend['username'] ?? ''),
+      title: Text(friend.displayName,
+          maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: PresenceLabel(uid: friend.uid, fallback: friend.username),
+      onTap: () => _openChat(friend),
       trailing: PopupMenuButton<String>(
-        onSelected: (value) async {
-          if (value == 'chat') {
-            await _startChat(friend['userId'], friend['name']);
-          } else if (value == 'remove') {
-            await _removeFriend(friend);
+        onSelected: (value) {
+          switch (value) {
+            case 'chat':
+              _openChat(friend);
+            case 'profile':
+              _openProfile(friend.uid);
+            case 'remove':
+              _confirmRemove(friend);
           }
         },
-        itemBuilder: (context) => [
+        itemBuilder: (context) => const [
           PopupMenuItem(
             value: 'chat',
-            child: Row(
-              children: [
-                Icon(Icons.chat),
-                SizedBox(width: 8),
-                Text('Chat'),
-              ],
+            child: ListTile(
+              leading: Icon(Icons.chat_bubble_outline),
+              title: Text('Message'),
+            ),
+          ),
+          PopupMenuItem(
+            value: 'profile',
+            child: ListTile(
+              leading: Icon(Icons.person_outline),
+              title: Text('View profile'),
             ),
           ),
           PopupMenuItem(
             value: 'remove',
-            child: Row(
-              children: [
-                Icon(Icons.person_remove, color: Colors.red),
-                SizedBox(width: 8),
-                Text('Remove Friend', style: TextStyle(color: Colors.red)),
-              ],
+            child: ListTile(
+              leading: Icon(Icons.person_remove_outlined, color: Colors.red),
+              title: Text('Remove friend', style: TextStyle(color: Colors.red)),
             ),
           ),
         ],
       ),
-      onTap: () async {
-        await _startChat(friend['userId'], friend['name']);
-      },
     );
   }
 
-  Widget _buildRequestsList() {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      key: ValueKey(_refreshKey),
-      stream: FriendRequestService.getPendingFriendRequests(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
+  // ---------------------------------------------------------------------------
+  // Requests tab
+  // ---------------------------------------------------------------------------
 
-        if (snapshot.hasError) {
-          print('Friend requests error: ${snapshot.error}');
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: Colors.red,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Error loading requests',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.red,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Please check your internet connection',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-                SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      // This will rebuild the widget and retry the stream
-                    });
-                  },
-                  child: Text('Retry'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final requests = snapshot.data ?? [];
-
-        if (requests.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.person_add_outlined,
-                  size: 64,
-                  color: Colors.grey,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'No friend requests',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          itemCount: requests.length,
-          itemBuilder: (context, index) {
-            final request = requests[index];
-            return _buildRequestTile(request);
-          },
-        );
-      },
+  Widget _buildRequests(FriendsState state) {
+    if (state.incoming.isEmpty && state.outgoing.isEmpty) {
+      return const EmptyState(
+        icon: Icons.mark_email_unread_outlined,
+        title: 'No pending requests',
+        message: 'Requests you send or receive show up here.',
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 16),
+      children: [
+        if (state.incoming.isNotEmpty) ...[
+          _sectionHeader('Received', state.incoming.length),
+          for (final request in state.incoming) _buildIncomingTile(request),
+        ],
+        if (state.outgoing.isNotEmpty) ...[
+          _sectionHeader('Sent', state.outgoing.length),
+          for (final request in state.outgoing) _buildOutgoingTile(request),
+        ],
+      ],
     );
   }
 
-  Widget _buildRequestTile(Map<String, dynamic> request) {
-    return Card(
-      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Padding(
-        padding: EdgeInsets.all(8),
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: request['senderProfilePic']?.isNotEmpty == true
-                  ? () {
-                      ImageHandler.showFullScreenImage(
-                          context, request['senderProfilePic']);
-                    }
-                  : null,
-              child: CircleAvatar(
-                radius: 24,
-                backgroundImage: request['senderProfilePic']?.isNotEmpty == true
-                    ? CachedNetworkImageProvider(request['senderProfilePic'])
-                    : null,
-                backgroundColor:
-                    Theme.of(context).primaryColor.withOpacity(0.1),
-                child: request['senderProfilePic']?.isEmpty != false
-                    ? Text(
-                        request['senderName']?.isNotEmpty == true
-                            ? request['senderName'][0].toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      )
-                    : null,
-              ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    request['senderName'] ?? 'Unknown',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  if (request['senderUsername']?.isNotEmpty == true)
-                    Text(
-                      request['senderUsername'],
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
-                      ),
-                    ),
-                  Text(
-                    _formatRequestDate(request['timestamp']),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              children: [
-                ElevatedButton(
-                  onPressed: () async {
-                    await _acceptRequest(request);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    minimumSize: Size(80, 32),
-                  ),
-                  child: Text('Accept'),
-                ),
-                SizedBox(height: 4),
-                OutlinedButton(
-                  onPressed: () async {
-                    await _rejectRequest(request);
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    minimumSize: Size(80, 32),
-                  ),
-                  child: Text('Decline'),
-                ),
-              ],
-            ),
-          ],
+  Widget _sectionHeader(String title, int count) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      child: Text(
+        '$title · $count',
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.primary,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 
-  Future<void> _acceptRequest(Map<String, dynamic> request) async {
-    final success = await FriendRequestService.acceptFriendRequest(
-      requestId: request['id'],
-      senderId: request['senderId'],
+  Widget _buildIncomingTile(FriendRequest request) {
+    final sender = request.sender;
+    return ListTile(
+      leading: UserAvatar(name: sender.displayName, photoUrl: sender.photoUrl),
+      title: Text(sender.displayName,
+          maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        [
+          if (sender.username.isNotEmpty) sender.username,
+          _formatRequestDate(request.sentAt),
+        ].join(' · '),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      onTap: () => _openProfile(request.senderId),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton.filledTonal(
+            icon: const Icon(Icons.close),
+            tooltip: 'Decline',
+            onPressed: () => _friends.decline(request),
+          ),
+          const SizedBox(width: 4),
+          IconButton.filled(
+            icon: const Icon(Icons.check),
+            tooltip: 'Accept',
+            onPressed: () {
+              _friends.accept(request);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text('You and ${sender.displayName} are now friends'),
+                behavior: SnackBarBehavior.floating,
+              ));
+            },
+          ),
+        ],
+      ),
     );
-
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Friend request accepted!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to accept friend request'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
-  Future<void> _rejectRequest(Map<String, dynamic> request) async {
-    final success = await FriendRequestService.rejectFriendRequest(
-      requestId: request['id'],
+  Widget _buildOutgoingTile(FriendRequest request) {
+    final receiver = request.receiver;
+    return ListTile(
+      leading:
+          UserAvatar(name: receiver.displayName, photoUrl: receiver.photoUrl),
+      title: Text(
+        receiver.name.isNotEmpty ? receiver.name : 'Pending request',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        [
+          if (receiver.username.isNotEmpty) receiver.username,
+          _formatRequestDate(request.sentAt),
+        ].join(' · '),
+      ),
+      onTap: () => _openProfile(request.receiverId),
+      trailing: OutlinedButton(
+        onPressed: () => _friends.cancel(request),
+        child: const Text('Cancel'),
+      ),
     );
-
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Friend request declined'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to decline friend request'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
-  Future<void> _startChat(String userId, String name) async {
-    String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+  // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
 
-    List<String> ids = [currentUserId, userId];
-    ids.sort();
-    String chatId = ids.join("-");
-
-    // Use the chat initialization service to ensure proper chat structure
-    await ChatInitializationService.ensureChatStructure(
-      chatId: chatId,
-      currentUserId: currentUserId,
-      otherUserId: userId,
-    );
-
+  void _openChat(Friend friend) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => UserChatScreen(userId: userId, userName: name),
+        builder: (_) =>
+            UserChatScreen(userId: friend.uid, userName: friend.displayName),
       ),
     );
   }
 
-  Future<void> _removeFriend(Map<String, dynamic> friend) async {
-    final result = await showDialog<bool>(
+  void _openProfile(String uid) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => UserProfileScreen(userId: uid)),
+    );
+  }
+
+  Future<void> _confirmRemove(Friend friend) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Remove Friend'),
+        title: const Text('Remove friend?'),
         content: Text(
-            'Are you sure you want to remove ${friend['name']} from your friends?'),
+            "${friend.displayName} won't be notified. You'll need a new request to chat again."),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
           ),
-          TextButton(
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text('Remove'),
+            child: const Text('Remove'),
           ),
         ],
       ),
     );
+    if (confirmed == true) _friends.remove(friend);
+  }
 
-    if (result == true) {
-      final success =
-          await FriendRequestService.removeFriend(friend['friendshipId']);
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Friend removed'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to remove friend'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+  static String _formatRequestDate(DateTime? date) {
+    if (date == null) return 'Recently';
+    final difference = DateTime.now().difference(date);
+    if (difference.inDays > 7) return DateFormat('MMM d, yyyy').format(date);
+    if (difference.inDays > 0) return '${difference.inDays}d ago';
+    if (difference.inHours > 0) return '${difference.inHours}h ago';
+    if (difference.inMinutes > 0) return '${difference.inMinutes}m ago';
+    return 'Just now';
   }
 }

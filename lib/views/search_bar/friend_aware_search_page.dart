@@ -1,482 +1,90 @@
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:chatspot/services/chat_initialization_service.dart';
-import 'package:chatspot/services/friend/friend_request_service.dart';
-import '../chat/chat_main/main_chat_screen.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'search_history.dart';
-import '../chat/chat_main/image_handler.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'package:chatspot/dashboard/menu/components/my_profile.dart';
+import 'package:chatspot/services/friend/friend_models.dart';
+import 'package:chatspot/services/friend/friend_repository.dart';
+import 'package:chatspot/services/search/search_history_store.dart';
+import 'package:chatspot/services/search/user_search_service.dart';
+import 'package:chatspot/services/user/user_profile.dart';
+import 'package:chatspot/services/user/user_repository.dart';
+import 'package:chatspot/views/common/state_views.dart';
+import 'package:chatspot/views/common/user_avatar.dart';
+import '../chat/chat_main/main_chat_screen.dart';
+import '../chat/chat_main/user_profile_screen.dart';
+
+/// Find people by name or @username.
+///
+/// Typing is debounced, each search is a few small indexed queries, results
+/// are remembered while the page is open, and relationship buttons come
+/// from memory. Recent profiles are stored on the device.
 class FriendAwareSearchPage extends StatefulWidget {
   @override
-  _FriendAwareSearchPageState createState() => _FriendAwareSearchPageState();
+  State<FriendAwareSearchPage> createState() => _FriendAwareSearchPageState();
 }
 
 class _FriendAwareSearchPageState extends State<FriendAwareSearchPage> {
+  static const Duration _debounce = Duration(milliseconds: 350);
+
   final TextEditingController _searchController = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
-  final SearchHistory _searchHistory = SearchHistory();
-  List<Map<String, dynamic>> _results = [];
-  List<Map<String, dynamic>> _historyResults = [];
-  bool _showHistory = true;
-  bool _hasUsername = false;
-  bool _isCheckingUsername = true;
+  final UserSearchService _search = UserSearchService();
+  final FriendRepository _friends = FriendRepository.instance;
+  late final String _selfId = UserRepository.instance.me.value?.uid ?? '';
+  late final SearchHistoryStore _history = SearchHistoryStore(_selfId);
+
+  Timer? _debounceTimer;
+  String _query = '';
+  List<UserProfile> _results = const [];
+  List<UserProfile> _recent = const [];
+  bool _searching = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode.requestFocus();
-    _loadSearchHistory();
-    _checkUsername();
-  }
-
-  Future<void> _checkUsername() async {
-    try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser != null) {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
-            .get();
-
-        if (mounted) {
-          setState(() {
-            _hasUsername = userDoc.exists &&
-                userDoc.data()?.containsKey('username') == true &&
-                userDoc['username'] != null &&
-                userDoc['username'].toString().isNotEmpty;
-            _isCheckingUsername = false;
-          });
-        }
-      }
-    } catch (e) {
-      print("Error checking username: $e");
-      if (mounted) {
-        setState(() {
-          _isCheckingUsername = false;
-        });
-      }
-    }
+    _history.load().then((recent) {
+      if (mounted) setState(() => _recent = recent);
+    });
   }
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    _debounceTimer?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadSearchHistory() async {
-    final history = await _searchHistory.getSearchHistory();
-    if (mounted) {
+  void _onChanged(String value) {
+    final query = value.trim();
+    setState(() => _query = query);
+    _debounceTimer?.cancel();
+    if (!UserSearchService.isSearchable(query)) {
       setState(() {
-        _historyResults = history;
+        _results = const [];
+        _searching = false;
       });
-    }
-  }
-
-  void _onSearchChanged(String query) async {
-    if (_isCheckingUsername) {
       return;
     }
-
-    if (query.isNotEmpty) {
-      if (!_hasUsername) {
-        _showUsernameAlert();
-        if (mounted) {
-          setState(() {
-            _results = [];
-            _showHistory = true;
-          });
-        }
-        return;
-      }
-
-      if (mounted) {
-        setState(() {
-          _showHistory = false;
-        });
-      }
-
-      try {
-        final currentUserId = FirebaseAuth.instance.currentUser!.uid;
-        final isUsernameSearch = query.startsWith('@');
-
-        if (isUsernameSearch) {
-          final usernameQuery = query;
-          final usernameSnapshot = await FirebaseFirestore.instance
-              .collection('users')
-              .where('username', isEqualTo: usernameQuery)
-              .get();
-
-          List<Map<String, dynamic>> results = [];
-
-          for (var doc in usernameSnapshot.docs) {
-            if (doc.id != currentUserId) {
-              // Exclude current user
-              final data = doc.data();
-
-              // Check friendship status and pending requests
-              final isFriend =
-                  await FriendRequestService.areFriends(currentUserId, doc.id);
-              final pendingRequest =
-                  await FriendRequestService.getPendingRequestBetweenUsers(
-                      currentUserId, doc.id);
-
-              results.add({
-                "userId": doc.id,
-                "username": data['username'] ?? '',
-                "name": data['name'] ?? '',
-                "profilePictureUrl": data['profilePictureUrl'] ?? '',
-                "isFriend": isFriend,
-                "pendingRequest": pendingRequest,
-              });
-            }
-          }
-
-          if (mounted) {
-            setState(() {
-              _results = results;
-            });
-          }
-        } else {
-          final nameQuery = query.toLowerCase();
-          final allUsers =
-              await FirebaseFirestore.instance.collection('users').get();
-
-          List<QueryDocumentSnapshot> matchingUsers = [];
-
-          if (nameQuery.length == 1) {
-            final char = nameQuery[0];
-
-            matchingUsers = allUsers.docs.where((doc) {
-              if (doc.id == currentUserId) return false; // Exclude current user
-              final name = doc['name']?.toString().toLowerCase() ?? '';
-              return name.isNotEmpty && name.split(' ')[0].startsWith(char);
-            }).toList();
-
-            matchingUsers.sort((a, b) => (a['name'] ?? '')
-                .toLowerCase()
-                .compareTo((b['name'] ?? '').toLowerCase()));
-          } else {
-            matchingUsers = allUsers.docs.where((doc) {
-              if (doc.id == currentUserId) return false; // Exclude current user
-              final name = doc['name']?.toString().toLowerCase() ?? '';
-              return name.contains(nameQuery);
-            }).toList();
-
-            matchingUsers.sort((a, b) {
-              final aName = a['name'].toString().toLowerCase();
-              final bName = b['name'].toString().toLowerCase();
-
-              if (aName == nameQuery) return -1;
-              if (bName == nameQuery) return 1;
-
-              final aStarts = aName.startsWith(nameQuery);
-              final bStarts = bName.startsWith(nameQuery);
-              if (aStarts && !bStarts) return -1;
-              if (!aStarts && bStarts) return 1;
-
-              final aLastWord = aName.split(' ').last;
-              final bLastWord = bName.split(' ').last;
-              final aLastMatch = aLastWord.startsWith(nameQuery);
-              final bLastMatch = bLastWord.startsWith(nameQuery);
-              if (aLastMatch && !bLastMatch) return -1;
-              if (!aLastMatch && bLastMatch) return 1;
-
-              return aName
-                  .indexOf(nameQuery)
-                  .compareTo(bName.indexOf(nameQuery));
-            });
-          }
-
-          List<Map<String, dynamic>> results = [];
-
-          for (var doc in matchingUsers) {
-            final data = doc.data() as Map<String, dynamic>;
-
-            // Check friendship status and pending requests
-            final isFriend =
-                await FriendRequestService.areFriends(currentUserId, doc.id);
-            final pendingRequest =
-                await FriendRequestService.getPendingRequestBetweenUsers(
-                    currentUserId, doc.id);
-
-            results.add({
-              "userId": doc.id,
-              "username": data['username'] ?? '',
-              "name": data['name'] ?? '',
-              "profilePictureUrl": data['profilePictureUrl'] ?? '',
-              "isFriend": isFriend,
-              "pendingRequest": pendingRequest,
-            });
-          }
-
-          if (mounted) {
-            setState(() {
-              _results = results;
-            });
-          }
-        }
-      } catch (e) {
-        print("Error searching for user: $e");
-      }
-    } else {
-      if (mounted) {
-        setState(() {
-          _results = [];
-          _showHistory = true;
-        });
-      }
-    }
+    setState(() => _searching = true);
+    _debounceTimer = Timer(_debounce, () => _run(query));
   }
 
-  void _showUsernameAlert() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Username Required!"),
-        content: Text(
-            "Please set your username in your profile before searching for other users"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("OK"),
-          ),
-        ],
-      ),
-    );
+  Future<void> _run(String query) async {
+    final results = await _search.search(query, selfId: _selfId);
+    // Ignore answers to queries the user has already typed past.
+    if (!mounted || query != _query) return;
+    setState(() {
+      _results = results;
+      _searching = false;
+    });
   }
 
-  void _handleUserTap(Map<String, dynamic> user) async {
-    if (!_hasUsername) {
-      _showUsernameAlert();
-      return;
-    }
-
-    final userId = user['userId'];
-    final name = user['name'];
-    final isFriend = user['isFriend'] ?? false;
-    final pendingRequest = user['pendingRequest'];
-
-    if (isFriend) {
-      // They are friends, start chat directly
-      await _startChat(userId, name);
-    } else if (pendingRequest != null) {
-      // There's a pending request
-      if (pendingRequest['direction'] == 'sent') {
-        _showRequestSentDialog(name);
-      } else {
-        _showIncomingRequestDialog(name);
-      }
-    } else {
-      // Not friends and no pending request, show friend request dialog
-      _showSendRequestDialog(user);
-    }
-  }
-
-  void _showRequestSentDialog(String name) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Request Sent"),
-        content: Text(
-            "You've already sent a friend request to $name. Please wait for them to respond."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("OK"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showIncomingRequestDialog(String name) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Pending Request"),
-        content: Text(
-            "$name has sent you a friend request. Check your friend requests to accept or decline."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("OK"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSendRequestDialog(Map<String, dynamic> user) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Send Friend Request"),
-        content: Text(
-            "Send a friend request to ${user['name']}? You'll be able to chat once they accept."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _sendFriendRequest(user);
-            },
-            child: Text("Send Request"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _sendFriendRequest(Map<String, dynamic> user) async {
-    final success = await FriendRequestService.sendFriendRequest(
-      receiverId: user['userId'],
-    );
-
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Friend request sent to ${user['name']}!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Refresh the search results to update the button state
-      _onSearchChanged(_searchController.text);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to send friend request'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _startChat(String userId, String name) async {
-    await _searchHistory.addToSearchHistory(userId);
-    String currentUserId = FirebaseAuth.instance.currentUser!.uid;
-
-    List<String> ids = [currentUserId, userId];
-    ids.sort();
-    String chatId = ids.join("-");
-
-    // Use the chat initialization service to ensure proper chat structure
-    await ChatInitializationService.ensureChatStructure(
-      chatId: chatId,
-      currentUserId: currentUserId,
-      otherUserId: userId,
-    );
-
+  Future<void> _open(UserProfile profile) async {
+    final recent = await _history.add(profile);
+    if (mounted) setState(() => _recent = recent);
+    if (!mounted) return;
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => UserChatScreen(userId: userId, userName: name),
-      ),
-    );
-  }
-
-  Future<void> _removeFromHistory(String userId) async {
-    await _searchHistory.removeFromSearchHistory(userId);
-    await _loadSearchHistory();
-  }
-
-  Future<void> _clearAllHistory() async {
-    await _searchHistory.clearSearchHistory();
-    await _loadSearchHistory();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Search history cleared')),
-    );
-  }
-
-  Widget _buildUserTile(Map<String, dynamic> user) {
-    final isFriend = user['isFriend'] ?? false;
-    final pendingRequest = user['pendingRequest'];
-
-    String actionText = 'Add Friend';
-    Color actionColor = Colors.blue;
-    IconData actionIcon = Icons.person_add;
-
-    if (isFriend) {
-      actionText = 'Chat';
-      actionColor = Colors.green;
-      actionIcon = Icons.chat;
-    } else if (pendingRequest != null) {
-      if (pendingRequest['direction'] == 'sent') {
-        actionText = 'Sent';
-        actionColor = Colors.orange;
-        actionIcon = Icons.schedule;
-      } else {
-        actionText = 'Respond';
-        actionColor = Colors.purple;
-        actionIcon = Icons.notification_important;
-      }
-    }
-
-    return ListTile(
-      leading: GestureDetector(
-        onTap: user["profilePictureUrl"]?.isNotEmpty == true
-            ? () {
-                ImageHandler.showFullScreenImage(
-                    context, user["profilePictureUrl"]);
-              }
-            : null,
-        child: CircleAvatar(
-          radius: 24,
-          child: user["profilePictureUrl"]?.isNotEmpty == true
-              ? CachedNetworkImage(
-                  imageUrl: user["profilePictureUrl"],
-                  imageBuilder: (context, imageProvider) => CircleAvatar(
-                    backgroundImage: imageProvider,
-                    radius: 24,
-                  ),
-                  placeholder: (context, url) => CircleAvatar(
-                    child: Text(user["name"][0].toUpperCase()),
-                    radius: 24,
-                  ),
-                  errorWidget: (context, url, error) => CircleAvatar(
-                    child: Text(user["name"][0].toUpperCase()),
-                    radius: 24,
-                  ),
-                )
-              : CircleAvatar(
-                  child: Text(user["name"][0].toUpperCase()),
-                  radius: 24,
-                ),
-        ),
-      ),
-      title: Text(user["name"]),
-      subtitle: Text(user["username"]),
-      trailing: Container(
-        decoration: BoxDecoration(
-          color: actionColor,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(actionIcon, size: 16, color: Colors.white),
-              SizedBox(width: 4),
-              Text(
-                actionText,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      onTap: () => _handleUserTap(user),
+      MaterialPageRoute(builder: (_) => UserProfileScreen(userId: profile.uid)),
     );
   }
 
@@ -484,54 +92,182 @@ class _FriendAwareSearchPageState extends State<FriendAwareSearchPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            IconButton(
-              icon: Icon(Icons.arrow_back),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-            SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                focusNode: _focusNode,
-                onChanged: _onSearchChanged,
-                decoration: InputDecoration(
-                  hintText: 'Search...',
-                  border: InputBorder.none,
-                  filled: true,
-                  fillColor: Colors.transparent,
-                  contentPadding:
-                      EdgeInsets.symmetric(vertical: 10.0, horizontal: 15.0),
-                ),
-              ),
-            ),
-          ],
+        titleSpacing: 0,
+        title: TextField(
+          controller: _searchController,
+          autofocus: true,
+          textInputAction: TextInputAction.search,
+          onChanged: _onChanged,
+          decoration: InputDecoration(
+            hintText: 'Search by name or @username',
+            border: InputBorder.none,
+            filled: false,
+            suffixIcon: _query.isEmpty
+                ? null
+                : IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      _searchController.clear();
+                      _onChanged('');
+                    },
+                  ),
+          ),
         ),
       ),
-      body: _isCheckingUsername
-          ? Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(0),
-              child: _showHistory
-                  ? _searchHistory.buildSearchHistoryList(
-                      history: _historyResults,
-                      onUserTap:
-                          _startChat, // Only friends can be in history, so this is safe
-                      onRemove: _removeFromHistory,
-                      onClearAll: _clearAllHistory,
-                      context: context,
-                    )
-                  : ListView.builder(
-                      itemCount: _results.length,
-                      itemBuilder: (context, index) {
-                        return _buildUserTile(_results[index]);
-                      },
-                    ),
-            ),
+      body: ValueListenableBuilder<UserProfile?>(
+        valueListenable: UserRepository.instance.me,
+        builder: (context, me, _) {
+          if (me != null && !me.hasUsername) return _buildUsernameRequired();
+          // Relationship buttons follow requests and accepts live.
+          return ValueListenableBuilder<FriendsState>(
+            valueListenable: _friends.state,
+            builder: (context, _, __) =>
+                _query.isEmpty ? _buildRecent() : _buildResults(),
+          );
+        },
+      ),
     );
+  }
+
+  Widget _buildUsernameRequired() {
+    return EmptyState(
+      icon: Icons.alternate_email,
+      title: 'Choose a username first',
+      message: 'People find and add each other by username.',
+      actionLabel: 'Set username',
+      onAction: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ProfilePage()),
+      ),
+    );
+  }
+
+  Widget _buildRecent() {
+    if (_recent.isEmpty) {
+      return const EmptyState(
+        icon: Icons.person_search_outlined,
+        title: 'Find people',
+        message: 'Search by name, or by @username for an exact person.',
+      );
+    }
+    final theme = Theme.of(context);
+    return ListView(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Recent',
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final recent = await _history.clear();
+                  if (mounted) setState(() => _recent = recent);
+                },
+                child: const Text('Clear all'),
+              ),
+            ],
+          ),
+        ),
+        for (final profile in _recent)
+          _buildUserTile(
+            profile,
+            trailing: IconButton(
+              icon: const Icon(Icons.close, size: 20),
+              tooltip: 'Remove',
+              onPressed: () async {
+                final recent = await _history.remove(profile.uid);
+                if (mounted) setState(() => _recent = recent);
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildResults() {
+    if (!UserSearchService.isSearchable(_query)) {
+      return const EmptyState(
+        icon: Icons.keyboard_outlined,
+        title: 'Keep typing',
+        message: 'Enter at least ${UserSearchService.minNameLength} characters.',
+      );
+    }
+    if (_searching && _results.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_results.isEmpty) {
+      return EmptyState(
+        icon: Icons.search_off_rounded,
+        title: 'No one found',
+        message: 'No match for "$_query". Check the spelling or try a username.',
+      );
+    }
+    return ListView.builder(
+      itemCount: _results.length,
+      itemBuilder: (context, index) => _buildUserTile(_results[index]),
+    );
+  }
+
+  Widget _buildUserTile(UserProfile profile, {Widget? trailing}) {
+    return ListTile(
+      leading: UserAvatar(name: profile.displayName, photoUrl: profile.photoUrl),
+      title: Text(profile.displayName,
+          maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: profile.username.isEmpty ? null : Text(profile.username),
+      onTap: () => _open(profile),
+      trailing: trailing ?? _buildRelationButton(profile),
+    );
+  }
+
+  Widget _buildRelationButton(UserProfile profile) {
+    switch (_friends.relationTo(profile.uid)) {
+      case Relationship.self:
+        return const SizedBox.shrink();
+      case Relationship.friend:
+        return FilledButton.tonalIcon(
+          icon: const Icon(Icons.chat_bubble_outline, size: 18),
+          label: const Text('Chat'),
+          onPressed: () async {
+            await _history.add(profile);
+            if (!mounted) return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => UserChatScreen(
+                    userId: profile.uid, userName: profile.displayName),
+              ),
+            );
+          },
+        );
+      case Relationship.requestSent:
+        return OutlinedButton(
+          onPressed: null,
+          child: const Text('Requested'),
+        );
+      case Relationship.requestReceived:
+        return FilledButton(
+          onPressed: () =>
+              _friends.accept(_friends.state.value.incomingFrom(profile.uid)!),
+          child: const Text('Accept'),
+        );
+      case Relationship.none:
+        return FilledButton.icon(
+          icon: const Icon(Icons.person_add_alt_1, size: 18),
+          label: const Text('Add'),
+          onPressed: () {
+            _friends.sendRequest(profile);
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('Friend request sent to ${profile.displayName}'),
+              behavior: SnackBarBehavior.floating,
+            ));
+          },
+        );
+    }
   }
 }

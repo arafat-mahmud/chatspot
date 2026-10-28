@@ -38,9 +38,8 @@ This implementation adds a comprehensive friend list system to ChatSpot with fri
 ```
 lib/
 ├── services/friend/
-│   ├── friend_request_service.dart         # Core friend request operations
-│   ├── friend_aware_chat_service.dart      # Friend-aware chat operations
-│   └── friend_notification_service.dart   # Friend request notifications
+│   ├── friend_models.dart                  # Friend, FriendRequest, FriendsState
+│   └── friend_repository.dart             # Live friends/requests + all actions
 ├── views/friends/
 │   └── friend_list_screen.dart            # Friend list UI with tabs
 ├── views/search_bar/
@@ -89,25 +88,23 @@ lib/
 
 ## Key Components
 
-### FriendRequestService
-- `sendFriendRequest()` - Send a friend request to another user
-- `acceptFriendRequest()` - Accept an incoming friend request
-- `rejectFriendRequest()` - Reject an incoming friend request
-- `getFriendsList()` - Get stream of current user's friends
-- `getPendingFriendRequests()` - Get stream of pending requests
-- `areFriends()` - Check if two users are friends
-- `getPendingRequestBetweenUsers()` - Check for pending requests between users
+### FriendRepository
+Three listeners for the whole session (friends, received requests, sent
+requests); everything else is answered from memory. See ARCHITECTURE.md.
+- `state` - live `FriendsState` (friends, incoming, outgoing, unseen count)
+- `isFriend()` / `isFriendConfirmed()` / `relationTo()` - no reads
+- `sendRequest()`, `accept()`, `decline()`, `cancel()`, `remove()` - optimistic writes
+- `markRequestsSeen()` - writes only the requests not yet seen
 
 ### FriendListScreen
 - **Friends Tab**: Shows all friends with chat and remove options
-- **Requests Tab**: Shows pending requests with accept/decline buttons
-- **Real-time Updates**: Uses streams for live updates
+- **Requests Tab**: Received requests (accept/decline) and sent ones (cancel)
+- **Real-time Updates**: Renders `FriendRepository.state`; no queries
 - **Navigation**: Easy navigation to chat screens
 
 ### FriendAwareSearchPage
 - **Enhanced Search**: Shows friendship status for each user
 - **Action Buttons**: Different actions based on relationship status
-- **Request Dialogs**: Confirmation dialogs for sending requests
 - **Status Indicators**: Visual indicators for friend status
 
 ## User Flow
@@ -115,7 +112,7 @@ lib/
 ### Adding a Friend
 1. User searches for another user by name or username
 2. Search results show "Add Friend" button for non-friends
-3. User taps "Add Friend" and confirms in dialog
+3. User taps "Add" in the results or on the profile
 4. Friend request is sent to the target user
 5. Search shows "Sent" status for the request
 

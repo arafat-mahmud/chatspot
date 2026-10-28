@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatspot/views/chat/chat_main/date_formatters.dart';
-import 'package:chatspot/views/chat/chat_main/message_services.dart';
+import 'package:chatspot/services/app_messenger.dart';
+import 'package:chatspot/services/chat/chat_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:chatspot/services/cloudinary_service.dart';
@@ -83,14 +84,11 @@ class ImageHandler {
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-      await MessageServices.sendImageMessage(
-        chatId: chatId,
-        currentUserId: currentUserId,
-        receiverId: receiverId,
-        imageUrl: imageUrl,
-        context: context,
-      );
-
+      final sent = await ChatRepository.instance.sendImage(receiverId, imageUrl);
+      if (!sent) {
+        AppMessenger.error('You can only message friends');
+        return;
+      }
       scrollToBottom();
     } catch (e) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();

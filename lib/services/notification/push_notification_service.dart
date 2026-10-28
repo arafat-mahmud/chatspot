@@ -10,6 +10,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Runs in its own isolate when a push arrives while the app is in the
 /// background or killed. Message and missed-call pushes carry a notification
@@ -152,16 +153,28 @@ class PushNotificationService {
     _tokenSub = null;
     try {
       await FirebaseMessaging.instance.deleteToken();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_savedTokenKey);
     } catch (e) {
       debugPrint('PushNotificationService: deleting token failed: $e');
     }
   }
 
+  static const String _savedTokenKey = 'fcm_token_saved';
+
+  /// Writes the token only when it changed (and weekly, in case the
+  /// server ever dropped it), not on every app start.
   Future<void> _saveToken(String userId, String token) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final week = DateTime.now().millisecondsSinceEpoch ~/
+          const Duration(days: 7).inMilliseconds;
+      final saved = '$userId:$token:$week';
+      if (prefs.getString(_savedTokenKey) == saved) return;
       await FirebaseFirestore.instance.collection('users').doc(userId).set({
         'fcmTokens': FieldValue.arrayUnion([token]),
       }, SetOptions(merge: true));
+      await prefs.setString(_savedTokenKey, saved);
     } catch (e) {
       debugPrint('PushNotificationService: saving token failed: $e');
     }

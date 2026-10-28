@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'signin.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:async'; // Import Timer
 import 'package:email_validator/email_validator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'package:loading_animation_widget/loading_animation_widget.dart'; // Import loading animation
@@ -34,8 +32,6 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _isPasswordVisible = false; // For Password field
   bool _isConfirmPasswordVisible = false; // For Confirm Password field
 
-  // Add a Timer variable
-  Timer? _verificationTimer;
   bool _isLoading = false;
 
   // Add a boolean variable to track email validity
@@ -54,7 +50,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   void dispose() {
-    _verificationTimer?.cancel();
     _nameController.dispose();
     _dobController.dispose();
     _emailController.dispose();
@@ -62,35 +57,6 @@ class _SignUpPageState extends State<SignUpPage> {
     _confirmPasswordController.dispose();
     _passwordFocusNode.dispose();
     super.dispose();
-  }
-
-  // ignore: unused_element
-  void _startEmailVerificationCheck(User user) {
-    _verificationTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
-      await user.reload();
-      User? updatedUser = FirebaseAuth.instance.currentUser;
-
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-
-      if (updatedUser?.emailVerified ?? false) {
-        timer.cancel();
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => SignInPage()),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Please verify your email to continue.')),
-          );
-        }
-      }
-    });
   }
 
   @override
@@ -110,7 +76,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 style: TextStyle(
                   fontSize: 24.0,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               SizedBox(height: 8),
@@ -119,7 +85,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14.0,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               SizedBox(height: 32),
@@ -325,113 +291,113 @@ class _SignUpPageState extends State<SignUpPage> {
                         : Colors.grey,
                   ),
                 ),
-                onPressed: _isLoading
-                    ? null
-                    : () async {
-                        // Check if passwords match before proceeding
-                        if (_passwordController.text !=
-                            _confirmPasswordController.text) {
-                          setState(() {
-                            _passwordsMatch = false;
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Passwords do not match')),
-                          );
-                          return;
-                        }
-
-                        setState(() {
-                          _isLoading = true;
-                        });
-
-                        // ... keep all your existing validation code ...
-
-                        try {
-                          UserCredential userCredential = await FirebaseAuth
-                              .instance
-                              .createUserWithEmailAndPassword(
-                            email: _emailController.text,
-                            password: _passwordController.text,
-                          );
-
-                          // Send verification email
-                          await userCredential.user!.sendEmailVerification();
-
-                          // Save user information to Firestore with server timestamp
-                          await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(userCredential.user!.uid)
-                              .set({
-                            'name': _nameController.text,
-                            'email': userCredential.user!.email,
-                            'gender': _selectedGender,
-                            'dob': _dobController.text,
-                            'uid': userCredential.user!.uid,
-                            'emailVerified': false,
-                            'lastLogin': FieldValue
-                                .serverTimestamp(), // Use server timestamp
-                          }, SetOptions(merge: true));
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(
-                                    'Verification email sent. Please verify your email within 5 minutes.')),
-                          );
-
-                          // Navigate to sign in page after 5 seconds
-                          Future.delayed(Duration(seconds: 5), () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => SignInPage()),
-                            );
-                          });
-                        } catch (e) {
-                          setState(() {
-                            _isLoading = false;
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(
-                                    'An error occurred. Please try again.')),
-                          );
-                        }
-                      },
+                onPressed: _isLoading ? null : _submit,
                 child: _isLoading
                     ? LoadingAnimationWidget.threeRotatingDots(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.primary,
                         size: 24,
                       )
                     : Text(
                         'Sign up',
-                        style: TextStyle(
-                          fontSize: 16.0,
-                          color: const Color.fromARGB(255, 0, 0, 0),
-                        ),
+                        style: TextStyle(fontSize: 16.0),
                       ),
               ),
               SizedBox(height: 16),
 
               // Already have an account? Link
               TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => SignInPage()),
-                  );
-                },
-                child: Text(
-                  'Already have an account? Sign in',
-                  style: TextStyle(
-                    color: Colors.black,
-                  ),
-                ),
+                onPressed: () => Navigator.of(context).maybePop(),
+                child: const Text('Already have an account? Sign in'),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _submit() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    String? problem;
+    if (name.length < 2) {
+      problem = 'Please enter your name';
+    } else if (!EmailValidator.validate(email)) {
+      problem = 'Please enter a valid email';
+    } else if (!_isPasswordValid(password)) {
+      problem = "Password doesn't meet the requirements below";
+    } else if (password != _confirmPasswordController.text) {
+      _passwordsMatch = false;
+      problem = 'Passwords do not match';
+    }
+    if (problem != null) {
+      setState(() {});
+      _showError(problem);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final credential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+      final user = credential.user!;
+      await Future.wait([
+        user.sendEmailVerification(),
+        FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'name': name,
+          'nameLower': name.toLowerCase(),
+          'email': user.email,
+          'gender': _selectedGender,
+          'dob': _dobController.text,
+          'uid': user.uid,
+          'emailVerified': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true)),
+      ]);
+      // Unverified accounts don't get into the app; they sign in after
+      // opening the link.
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          icon: const Icon(Icons.mark_email_read_outlined, size: 40),
+          title: const Text('Verify your email'),
+          content: Text(
+              'We sent a verification link to $email. Open it, then sign in.'),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Go to sign in'),
+            ),
+          ],
+        ),
+      );
+      if (mounted) Navigator.of(context).maybePop();
+    } on FirebaseAuthException catch (e) {
+      _showError(switch (e.code) {
+        'email-already-in-use' =>
+          'An account with this email already exists. Try signing in.',
+        'invalid-email' => 'Please enter a valid email',
+        'weak-password' => 'Please choose a stronger password',
+        'network-request-failed' => 'No internet connection',
+        _ => 'Sign up failed. Please try again.',
+      });
+    } catch (e) {
+      debugPrint('Sign up failed: $e');
+      _showError('Sign up failed. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   // Update the _isPasswordValid method to set the validation status

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatspot/views/chat/chat_main/date_formatters.dart';
 import 'package:chatspot/dashboard/menu/components/settings/text_theme_helper.dart';
 import 'package:flutter/material.dart';
@@ -122,36 +123,35 @@ class MessageBuilders {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(15),
-              child: Image.network(
-                imageUrl,
+              // Cached on disk and decoded at bubble size, so scrolling
+              // back never downloads a photo again.
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
                 fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: theme.colorScheme.primary,
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
-                            : null,
-                      ),
+                memCacheWidth: (MediaQuery.sizeOf(context).width *
+                        0.75 *
+                        MediaQuery.devicePixelRatioOf(context))
+                    .round(),
+                placeholder: (context, url) => Container(
+                  height: 200,
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: theme.colorScheme.primary,
                     ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: Center(
-                      child: Icon(
-                        Icons.broken_image,
-                        color: theme.colorScheme.onSurfaceVariant,
-                        size: 48,
-                      ),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  height: 200,
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  child: Center(
+                    child: Icon(
+                      Icons.broken_image,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      size: 48,
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
             Positioned(

@@ -41,26 +41,30 @@ lib/
 │   │       ├── main_chat_screen.dart     # Individual chat screen
 │   │       ├── chat_message_list.dart    # Message list display
 │   │       ├── message_input.dart        # Message input widget
-│   │       ├── message_services.dart     # Message operations
 │   │       ├── message_builders.dart     # Message UI builders
 │   │       ├── image_handler.dart        # Image upload/display
 │   │       ├── date_formatters.dart      # Date formatting utilities
 │   │       ├── user_profile_screen.dart  # User profile viewer
 │   │       └── chats_list/              # Chat list components
-│   │           ├── chat_list.dart       # Main chat list
+│   │           ├── friend_chat_list.dart # Chats tab
 │   │           └── chat_list_item.dart  # Individual chat item
 │   │
-│   └── search_bar/              # Search functionality
-│       ├── main_search_page.dart # Main search interface
-│       └── search_history.dart   # Search history management
+│   ├── friends/friend_list_screen.dart  # Friends + requests
+│   ├── common/                  # Shared widgets (avatar, empty/loading states)
+│   └── search_bar/
+│       └── friend_aware_search_page.dart # Find people by name / @username
 │
 └── services/                    # Backend services & utilities
     ├── firebase_options.dart    # Firebase configuration
     ├── cloudinary_service.dart  # Image upload service
-    ├── chat_initialization_service.dart # Chat setup service
-    ├── chat_cache_service.dart  # Chat caching system
-    ├── chat_cache_config.dart   # Cache configuration
+    ├── session/                 # Starts/stops everything per signed-in user
+    ├── user/                    # Profile cache, own profile, profile edits
+    ├── friend/                  # Friends + requests (live, in memory)
+    ├── chat/                    # Chat list, sending, per-chat paging
+    ├── search/                  # Indexed user search, on-device history
     └── call/                    # WebRTC calls + Firestore signaling (see CALL_SYSTEM_README.md)
+
+See ARCHITECTURE.md for how data is loaded and cached.
 ```
 │
 ```
@@ -74,8 +78,7 @@ lib/
    - Email/Password Sign In & Sign Up (Firebase Auth)
    - Forgot Password functionality
    - Email validation
-   - Auto sign-in for returning users
-   - Session management with timeout
+   - Auto sign-in for returning users; unverified accounts can't enter
    - User agreement & privacy policy acceptance
 
 2. **User Profile Management**
