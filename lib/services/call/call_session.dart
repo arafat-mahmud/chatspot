@@ -7,6 +7,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'call_config.dart';
 import 'call_model.dart';
 import 'call_platform.dart';
+import 'call_quality.dart';
 import 'sdp_utils.dart';
 
 /// What the call UI should currently show.
@@ -81,6 +82,36 @@ class CallSession extends ChangeNotifier {
   bool _remoteCameraOff = false;
   bool get remoteCameraOff => _remoteCameraOff;
 
+  /// The peer stopped sending video because their link is too weak.
+  bool _remoteVideoPaused = false;
+  bool get remoteVideoPaused => _remoteVideoPaused;
+  NetworkQuality _remoteNetwork = NetworkQuality.good;
+  NetworkQuality get remoteNetworkQuality => _remoteNetwork;
+
+  /// The level the peer is sending at; null until they report one.
+  SendQuality? _remoteQuality;
+
+  NetworkQuality get networkQuality =>
+      _quality?.network ?? NetworkQuality.good;
+
+  /// We stopped sending video so the voice gets through.
+  bool get videoPaused => isVideo && _quality?.quality == SendQuality.minimal;
+
+  /// Badge for the quality we are receiving, e.g. "Full HD", or null.
+  String? get qualityBadge {
+    final quality = _remoteQuality;
+    if (quality == null) return null;
+    if (!isVideo || _remoteCameraOff) {
+      // Both top levels carry 64 kbps "HD voice".
+      return quality.index <= SendQuality.high.index ? 'HD' : null;
+    }
+    return switch (quality) {
+      SendQuality.ultra => 'Full HD',
+      SendQuality.high => 'HD',
+      _ => null,
+    };
+  }
+
   MediaStream? _localStream;
   MediaStream? get localStream => _localStream;
   MediaStream? _remoteStream;
@@ -93,6 +124,12 @@ class CallSession extends ChangeNotifier {
   Timer? _connectTimer;
   Timer? _reconnectTimer;
   Timer? _iceRestartTimer;
+  Timer? _statsTimer;
+
+  /// Created on the first connection; adapts what we send to the network.
+  CallQualityController? _quality;
+  final LinkStatsReader _statsReader = LinkStatsReader();
+  bool _sampling = false;
 
   /// Caller: rev of the latest offer sent. Callee: unused.
   int _offerRev = 0;
@@ -106,7 +143,6 @@ class CallSession extends ChangeNotifier {
 
   bool _docCreated;
   bool _remoteDescriptionSet = false;
-  bool _sendersTuned = false;
   bool _finished = false;
   final List<RTCIceCandidate> _pendingLocalCandidates = [];
   final List<RTCIceCandidate> _pendingRemoteCandidates = [];
@@ -217,6 +253,10 @@ class CallSession extends ChangeNotifier {
       final answer = await _answerOffer(offer, rev);
       if (_finished) return;
 
+      // Start connectivity checks now instead of after the transaction,
+      // which takes several round trips on a slow link.
+      _listenToRemoteCandidates();
+
       final accepted = await _updateStatus((current) {
         if (current != CallStatus.ringing) return null;
         return {
@@ -235,7 +275,6 @@ class CallSession extends ChangeNotifier {
       // Hung up while the transaction was in flight.
       if (_finished) return;
 
-      _listenToRemoteCandidates();
       _connectTimer = Timer(CallConfig.connectTimeout, _onConnectTimeout);
       CallPlatform.onCallActive(video: isVideo, title: peerName);
     } catch (e) {
@@ -308,7 +347,13 @@ class CallSession extends ChangeNotifier {
   // Media & peer connection
   // ---------------------------------------------------------------------------
 
-  Map<String, bool> get _mediaState => {'mic': !_micMuted, 'cam': !_cameraOff};
+  Map<String, Object> get _mediaState => {
+        'mic': !_micMuted,
+        'cam': !_cameraOff,
+        'videoPaused': videoPaused,
+        'net': networkQuality.name,
+        if (_quality != null) 'quality': _quality!.quality.name,
+      };
 
   Future<void> _openMedia() async {
     await CallPlatform.prepareAudioSession(video: isVideo);
@@ -460,7 +505,7 @@ class CallSession extends ChangeNotifier {
         _setPhase(CallPhase.connected);
         // iOS can reset the route when the audio session activates.
         CallPlatform.setSpeakerphone(_speakerOn);
-        _tuneVideoSender();
+        _startQualityMonitor();
         break;
       case RTCPeerConnectionState.RTCPeerConnectionStateDisconnected:
         _onConnectionLost();
@@ -490,26 +535,77 @@ class CallSession extends ChangeNotifier {
     );
   }
 
-  /// Raises the video encoder's ceiling to HD; WebRTC's congestion control
-  /// still lowers it automatically when bandwidth is short.
-  Future<void> _tuneVideoSender() async {
-    if (!isVideo || _sendersTuned || _pc == null) return;
-    _sendersTuned = true;
+  void _startQualityMonitor() {
+    if (_quality != null) return;
+    _quality = CallQualityController(video: isVideo);
+    _applySendQuality();
+    _publishMediaState();
+    _statsTimer = Timer.periodic(CallConfig.statsInterval, (_) {
+      _sampleNetwork();
+    });
+  }
+
+  Future<void> _sampleNetwork() async {
+    final pc = _pc;
+    final controller = _quality;
+    if (pc == null ||
+        controller == null ||
+        _sampling ||
+        _phase != CallPhase.connected) {
+      return;
+    }
+    _sampling = true;
     try {
-      for (final sender in await _pc!.getSenders()) {
-        if (sender.track?.kind != 'video') continue;
+      final sample = _statsReader.read(await pc.getStats());
+      final previous = controller.quality;
+      if (_finished || !controller.add(sample)) return;
+      if (controller.quality != previous) {
+        debugPrint('CallSession: quality ${previous.name} -> '
+            '${controller.quality.name} (${controller.network.name})');
+        await _applySendQuality();
+      }
+      notifyListeners();
+      _publishMediaState();
+    } catch (e) {
+      debugPrint('CallSession: reading connection stats failed: $e');
+    } finally {
+      _sampling = false;
+    }
+  }
+
+  /// Applies the current [SendQuality] to the encoders. Voice gets bandwidth
+  /// first; video takes what is left and pauses when nothing is.
+  Future<void> _applySendQuality() async {
+    final pc = _pc;
+    final quality = _quality?.quality;
+    if (pc == null || quality == null) return;
+    final settings = SendSettings.of(quality);
+    try {
+      for (final sender in await pc.getSenders()) {
+        final kind = sender.track?.kind;
         final parameters = sender.parameters;
         final encodings = parameters.encodings;
         if (encodings == null || encodings.isEmpty) continue;
         for (final encoding in encodings) {
-          encoding.maxBitrate = CallConfig.hdVideoMaxBitrate;
-          encoding.maxFramerate = CallConfig.videoFrameRate;
+          if (kind == 'audio') {
+            encoding.maxBitrate = settings.audioBitrate;
+            encoding.priority = RTCPriorityType.high;
+          } else if (kind == 'video') {
+            encoding.active = settings.videoActive;
+            if (settings.videoActive) {
+              encoding.maxBitrate = settings.videoBitrate;
+              encoding.maxFramerate = settings.videoFrameRate;
+              encoding.scaleResolutionDownBy = settings.videoScaleDown;
+            }
+          }
         }
-        parameters.degradationPreference = RTCDegradationPreference.BALANCED;
+        if (kind == 'video') {
+          parameters.degradationPreference = RTCDegradationPreference.BALANCED;
+        }
         await sender.setParameters(parameters);
       }
     } catch (e) {
-      debugPrint('CallSession: tuning video sender failed: $e');
+      debugPrint('CallSession: applying ${quality.name} quality failed: $e');
     }
   }
 
@@ -536,9 +632,20 @@ class CallSession extends ChangeNotifier {
     if (peerMedia != null) {
       final micMuted = peerMedia['mic'] == false;
       final cameraOff = peerMedia['cam'] == false;
-      if (micMuted != _remoteMicMuted || cameraOff != _remoteCameraOff) {
+      final videoPaused = peerMedia['videoPaused'] == true;
+      final network = NetworkQuality.values.asNameMap()[peerMedia['net']] ??
+          NetworkQuality.good;
+      final quality = SendQuality.values.asNameMap()[peerMedia['quality']];
+      if (micMuted != _remoteMicMuted ||
+          cameraOff != _remoteCameraOff ||
+          videoPaused != _remoteVideoPaused ||
+          network != _remoteNetwork ||
+          quality != _remoteQuality) {
         _remoteMicMuted = micMuted;
         _remoteCameraOff = cameraOff;
+        _remoteVideoPaused = videoPaused;
+        _remoteNetwork = network;
+        _remoteQuality = quality;
         notifyListeners();
       }
     }
@@ -741,7 +848,13 @@ class CallSession extends ChangeNotifier {
     _endMessage = message;
     _phase = CallPhase.ended;
 
-    for (final timer in [_ringTimer, _connectTimer, _reconnectTimer, _iceRestartTimer]) {
+    for (final timer in [
+      _ringTimer,
+      _connectTimer,
+      _reconnectTimer,
+      _iceRestartTimer,
+      _statsTimer,
+    ]) {
       timer?.cancel();
     }
     _docSub?.cancel();

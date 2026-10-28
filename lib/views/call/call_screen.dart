@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chatspot/services/call/call_quality.dart';
 import 'package:chatspot/services/call/call_session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -94,6 +95,8 @@ class _CallScreenState extends State<CallScreen> {
       _renderersReady &&
       session.remoteStream != null &&
       !session.remoteCameraOff &&
+      // Otherwise the last frame would sit there frozen.
+      !session.remoteVideoPaused &&
       (session.phase == CallPhase.connected ||
           session.phase == CallPhase.reconnecting);
 
@@ -240,16 +243,17 @@ class _CallScreenState extends State<CallScreen> {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (session.phase == CallPhase.connected) ...[
+            if (session.phase == CallPhase.connected &&
+                session.qualityBadge != null) ...[
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.white70),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text(
-                  'HD',
-                  style: TextStyle(
+                child: Text(
+                  session.qualityBadge!,
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -283,9 +287,49 @@ class _CallScreenState extends State<CallScreen> {
             padding: const EdgeInsets.only(top: 8),
             child: _Chip(icon: Icons.videocam_off, label: 'Camera off'),
           ),
+        if (session.phase == CallPhase.connected)
+          for (final chip in _connectionChips())
+            Padding(padding: const EdgeInsets.only(top: 8), child: chip),
       ],
     );
   }
+
+  /// Explains choppy or frozen media: our own connection first, then the
+  /// peer's.
+  List<Widget> _connectionChips() {
+    final own = session.networkQuality;
+    final peer = session.remoteNetworkQuality;
+    return [
+      if (own != NetworkQuality.good)
+        _Chip(
+          icon: _networkIcon(own),
+          label: own == NetworkQuality.poor
+              ? 'Poor connection'
+              : 'Weak connection',
+        )
+      else if (peer != NetworkQuality.good)
+        _Chip(
+          icon: _networkIcon(peer),
+          label: "${session.peerName}'s connection is "
+              '${peer == NetworkQuality.poor ? 'poor' : 'weak'}',
+        ),
+      if (session.remoteVideoPaused && !session.remoteCameraOff)
+        _Chip(
+          icon: Icons.videocam_off,
+          label: "${session.peerName}'s video paused (weak connection)",
+        )
+      else if (session.videoPaused && !session.cameraOff)
+        const _Chip(
+          icon: Icons.videocam_off,
+          label: 'Your video is paused to keep audio clear',
+        ),
+    ];
+  }
+
+  static IconData _networkIcon(NetworkQuality quality) =>
+      quality == NetworkQuality.poor
+          ? Icons.signal_cellular_alt_1_bar
+          : Icons.signal_cellular_alt_2_bar;
 
   String _statusText() {
     switch (session.phase) {
@@ -450,7 +494,14 @@ class _Chip extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: Colors.white70),
           const SizedBox(width: 4),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
         ],
       ),
     );

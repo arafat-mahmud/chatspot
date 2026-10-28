@@ -6,10 +6,22 @@ ChatSpot supports 1:1 **HD voice calls** and **HD video calls** between friends.
 Media flows peer-to-peer over **WebRTC** (`flutter_webrtc`); **Firestore** is the
 signaling channel, so no extra backend is needed.
 
-| | Quality |
-|---|---|
-| Voice | Opus fullband (48 kHz), 64 kbps, in-band FEC for packet loss, echo cancellation + noise suppression |
-| Video | 1280x720 @ 30 fps, up to 2.5 Mbps; WebRTC congestion control scales down automatically on weak networks |
+Quality adapts to the network every 2 seconds, entirely on the device (no
+server, no paid service):
+
+| Level | Video | Voice | Needs roughly |
+|---|---|---|---|
+| Full HD | 1080p @ 30 fps, up to 4 Mbps | 64 kbps Opus fullband | 2.8 Mbps |
+| HD (start) | 720p @ 30 fps, up to 2 Mbps | 64 kbps | 1.2 Mbps |
+| Medium | 480p @ 30 fps | 48 kbps | 550 kbps |
+| Low | 360p @ 24 fps | 36 kbps | 280 kbps |
+| Very low | 240p @ 15 fps | 28 kbps | 110 kbps |
+| Voice only | paused | 20 kbps | below that |
+
+Voice always gets bandwidth before video, with in-band FEC, echo
+cancellation and noise suppression. A sudden drop is handled within 2 s; when
+the link recovers, quality jumps straight back up as soon as the bandwidth
+estimate proves it (otherwise one level every ~8 s).
 
 ## Features
 
@@ -22,7 +34,12 @@ signaling channel, so no extra backend is needed.
 - **Rings even when the app is closed** (Android): FCM push -> full-screen
   incoming call screen over the lock screen, Accept / Decline
 - Push notifications for new messages and missed calls
-- Automatic recovery when the network changes (Wi-Fi <-> mobile) via ICE restart
+- Automatic recovery when the network changes (Wi-Fi <-> mobile) via continual
+  ICE gathering, with ICE restart as the fallback
+- **Adaptive quality**: Full HD on fast networks, down to 240p or voice only
+  on slow ones and back up when the network recovers; both sides see "Full
+  HD"/"HD" badges, "Weak/Poor connection", or "video paused" instead of a
+  frozen picture
 - Calls keep running in the background (Android foreground service, iOS background audio)
 - Proximity sensor turns the screen off during earpiece calls
 - **Calls** tab with call history (incoming / outgoing / missed, duration) and one-tap call back
@@ -39,6 +56,7 @@ lib/
 │   ├── call_service.dart    # App-wide: start calls, incoming listener, busy handling, history
 │   ├── call_platform.dart   # Ringtone, audio routing, screen handling, foreground service
 │   ├── call_notifications.dart # System incoming-call screen (flutter_callkit_incoming)
+│   ├── call_quality.dart    # Adaptive quality from live WebRTC stats
 │   └── sdp_utils.dart       # Opus "HD voice" SDP tuning
 └── views/call/
     ├── call_screen.dart          # In-call UI (incoming, outgoing, connected)
@@ -92,7 +110,8 @@ hang up                ──►  status: ended, duration, endedBy
   status: "ringing" | "accepted" | "ended" | "declined" | "missed" | "busy" | "cancelled" | "failed",
   offer:  { type, sdp, rev },
   answer: { type, sdp, rev },
-  media:  { "<uid>": { mic: true, cam: true } },
+  media:  { "<uid>": { mic, cam, videoPaused, net: "good" | "weak" | "poor",
+                       quality: "ultra" | "high" | "medium" | "low" | "veryLow" | "minimal" } },
   createdAt, answeredAt, endedAt,  // server timestamps
   endedBy, duration                // seconds
 }
@@ -169,13 +188,14 @@ match /calls/{callId} {
 }
 ```
 
-### 3. TURN server (recommended for production)
+### 3. TURN relay (optional, not used by default)
 
-Google STUN servers are configured by default, which connects most calls. Calls
-between users behind strict/symmetric NATs (some mobile carriers, corporate
-Wi-Fi) need a TURN relay. Use a hosted one (e.g. Cloudflare Calls TURN, Twilio,
-Metered) or self-host [coturn](https://github.com/coturn/coturn), then pass the
-credentials at build time — they never go into git:
+Calls connect peer-to-peer through free Google STUN servers, with no relay and
+no running cost. That works on most Wi-Fi and many mobile connections, but
+when **both** phones are behind strict carrier NAT (common on mobile data) a
+call can stay on "Connecting…" and fail; only a TURN relay fixes that, and
+relays cost money or a server to run. If you ever add one (coturn, Twilio,
+Metered, Cloudflare…), pass it at build time:
 
 ```bash
 flutter run \
@@ -202,6 +222,12 @@ flutter run \
 3. Try: decline, no answer (45 s), hang up from both sides, mute/camera/speaker,
    switching Wi-Fi off mid-call (should show "Reconnecting…" and recover), and
    calling someone who is already on a call ("is on another call").
+4. Weak networks: throttle one phone, e.g. Android: Settings -> Mobile network -> Preferred
+   network type -> 2G/3G; iOS: Settings -> Developer -> Network Link
+   Conditioner ("3G", "Very Bad Network"). Voice should stay clear; video
+   drops resolution, then pauses with a "video paused" chip, and climbs back
+   to HD / Full HD when the throttling is removed. `CallSession: quality …` lines in the debug log
+   show each step.
 
 Unit tests: `flutter test test/services/call`
 
