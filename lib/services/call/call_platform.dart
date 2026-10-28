@@ -111,7 +111,10 @@ class CallPlatform {
   /// Runs call start/finish side effects strictly in order, so a quick
   /// hang-up can't leave the foreground service or screen lock behind.
   static Future<void> _enqueue(Future<void> Function() action) =>
-      _lifecycle = _lifecycle.then((_) => action());
+      _lifecycle = _lifecycle.then((_) => action()).catchError((Object e) {
+        // One failed step must not block every later call's side effects.
+        debugPrint('CallPlatform: call lifecycle step failed: $e');
+      });
 
   static Future<void> _startForegroundService({
     required bool video,

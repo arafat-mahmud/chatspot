@@ -176,6 +176,12 @@ class CallSession extends ChangeNotifier {
     _ringTimer = Timer(remaining, _onRingTimeout);
   }
 
+  /// An incoming call the user already accepted on the native call screen.
+  void startAccepted() {
+    _listenToCallDocument();
+    accept();
+  }
+
   Future<void> accept() async {
     if (_phase != CallPhase.incoming || _finished) return;
     _ringTimer?.cancel();
@@ -665,10 +671,24 @@ class CallSession extends ChangeNotifier {
   void _fail(Object error) {
     debugPrint('CallSession: call failed: $error');
     _endCall(
-      message: error is _CallFailure ? error.message : 'Call failed',
+      message: _failureMessage(error),
       whenRinging: CallStatus.failed,
       whenAccepted: CallStatus.failed,
     );
+  }
+
+  static String _failureMessage(Object error) {
+    if (error is _CallFailure) return error.message;
+    if (error is FirebaseException) {
+      switch (error.code) {
+        // Firestore rules for `calls` are missing (see CALL_SYSTEM_README.md).
+        case 'permission-denied':
+          return 'Call failed: calls are not allowed by the server rules';
+        case 'unavailable':
+          return 'Call failed: no internet connection';
+      }
+    }
+    return 'Call failed';
   }
 
   /// Ends the call locally right away (snappy UI), then records the outcome.

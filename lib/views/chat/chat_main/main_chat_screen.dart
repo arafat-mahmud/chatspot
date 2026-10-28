@@ -7,6 +7,7 @@ import 'package:chatspot/views/chat/chat_main/user_profile_screen.dart';
 import 'package:chatspot/views/chat/chat_main/chat_app_bar.dart';
 import 'package:chatspot/services/call/call_model.dart';
 import 'package:chatspot/services/call/call_service.dart';
+import 'package:chatspot/services/notification/push_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -58,6 +59,9 @@ class _UserChatScreenState extends State<UserChatScreen> {
     _scrollController.addListener(_scrollListener);
     ThemeService.init();
     _loadProfilePicture();
+    // No notifications for this chat while it's on screen.
+    PushNotificationService.instance.activeChatUserId = widget.userId;
+    PushNotificationService.instance.clearChat(chatId);
   }
 
   Future<void> _loadProfilePicture() async {
@@ -82,6 +86,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
 
   @override
   void dispose() {
+    final push = PushNotificationService.instance;
+    if (push.activeChatUserId == widget.userId) push.activeChatUserId = null;
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();

@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import 'call_config.dart';
 import 'call_model.dart';
+import 'call_notifications.dart';
 import 'call_session.dart';
 
 /// App-wide entry point for calls: places outgoing calls, listens for
@@ -25,17 +26,58 @@ class CallService {
 
   String? _userId;
   StreamSubscription? _incomingSub;
+  StreamSubscription? _nativeActionSub;
   final Set<String> _seenCallIds = {};
   bool _isStarting = false;
 
+  /// Calls ringing on the native call screen because the app was in the
+  /// background when they arrived.
+  final Set<String> _nativeRingingIds = {};
+
+  /// Calls that went through the native call screen and must be cleared
+  /// from it when they end.
+  final Set<String> _nativeCallIds = {};
+
+  /// Accepted on the native screen before the user was signed in.
+  String? _pendingAcceptId;
+  String? _joiningCallId;
+
   CallSession? _activeSession;
   CallSession? get activeSession => _activeSession;
+
+  /// Listens for taps on the native call screen. Call once at startup, before
+  /// the user is known: an accept can be what launched the app.
+  void init() {
+    _nativeActionSub ??= CallNotifications.actions.listen((action) {
+      final (type, callId) = action;
+      switch (type) {
+        case NativeCallAction.accept:
+          _onNativeAccept(callId);
+        case NativeCallAction.decline:
+          _nativeRingingIds.remove(callId);
+          _nativeCallIds.remove(callId);
+          closeRingingCall(callId, CallStatus.declined);
+      }
+    });
+  }
 
   /// Starts listening for incoming calls. Safe to call repeatedly.
   void attach(String userId) {
     if (_userId == userId) return;
     detach();
     _userId = userId;
+    _startListening(userId);
+  }
+
+  Future<void> _startListening(String userId) async {
+    // A call accepted on the native screen while the app was closed: join it
+    // instead of ringing for it again.
+    final acceptedId =
+        _pendingAcceptId ?? await CallNotifications.acceptedCallId();
+    _pendingAcceptId = null;
+    if (_userId != userId) return;
+    if (acceptedId != null) _seenCallIds.add(acceptedId);
+
     _incomingSub = _calls
         .where('calleeId', isEqualTo: userId)
         .where('status', isEqualTo: CallStatus.ringing.name)
@@ -45,6 +87,8 @@ class CallService {
           _onIncomingCalls,
           onError: (e) => debugPrint('CallService: incoming calls error: $e'),
         );
+
+    if (acceptedId != null) _joinAcceptedCall(acceptedId, userId);
   }
 
   /// Stops listening and ends any active call (e.g. on sign-out).
@@ -53,6 +97,11 @@ class CallService {
     _incomingSub = null;
     _userId = null;
     _seenCallIds.clear();
+    for (final callId in _nativeCallIds) {
+      CallNotifications.end(callId);
+    }
+    _nativeCallIds.clear();
+    _nativeRingingIds.clear();
     _activeSession?.hangUp();
   }
 
@@ -125,6 +174,14 @@ class CallService {
     final userId = _userId;
     if (userId == null) return;
 
+    // A natively ringing call that left the query was cancelled or timed out.
+    final ringingIds = snapshot.docs.map((doc) => doc.id).toSet();
+    for (final callId in _nativeRingingIds.difference(ringingIds).toList()) {
+      _nativeRingingIds.remove(callId);
+      _nativeCallIds.remove(callId);
+      CallNotifications.end(callId);
+    }
+
     for (final doc in snapshot.docs) {
       if (!_seenCallIds.add(doc.id)) continue;
       final call = CallModel.fromDoc(doc);
@@ -134,16 +191,89 @@ class CallService {
           DateTime.now().difference(createdAt) >
               CallConfig.ringTimeout + const Duration(seconds: 15);
       if (isStale) {
-        _closeRingingCall(call.id, CallStatus.missed);
+        closeRingingCall(call.id, CallStatus.missed);
         continue;
       }
-      if (_activeSession != null || _isStarting) {
-        _closeRingingCall(call.id, CallStatus.busy);
+      if (_activeSession != null ||
+          _isStarting ||
+          _joiningCallId != null ||
+          _nativeRingingIds.isNotEmpty) {
+        closeRingingCall(call.id, CallStatus.busy);
         continue;
       }
 
-      _present(call, userId)?.startIncoming();
+      if (_isAppVisible || !CallNotifications.isSupported) {
+        _present(call, userId)?.startIncoming();
+      } else {
+        // Android won't let a backgrounded app open its own screen; the
+        // system call screen can ring over anything, including the lock
+        // screen.
+        _nativeRingingIds.add(call.id);
+        _nativeCallIds.add(call.id);
+        CallNotifications.showIncoming(
+          callId: call.id,
+          callerName: call.callerName,
+          callerPhotoUrl: call.callerPhotoUrl,
+          video: call.isVideo,
+          createdAt: call.createdAt,
+        );
+      }
     }
+  }
+
+  static bool get _isAppVisible {
+    final state = WidgetsBinding.instance.lifecycleState;
+    return state == null ||
+        state == AppLifecycleState.resumed ||
+        state == AppLifecycleState.inactive;
+  }
+
+  void _onNativeAccept(String callId) {
+    _nativeRingingIds.remove(callId);
+    _nativeCallIds.add(callId);
+    final userId = _userId;
+    if (userId == null || _incomingSub == null) {
+      // Still starting up; [_startListening] picks it up.
+      _pendingAcceptId = callId;
+      return;
+    }
+    _seenCallIds.add(callId);
+    _joinAcceptedCall(callId, userId);
+  }
+
+  /// Opens the call screen for a call accepted on the native screen and
+  /// connects it without ringing again.
+  Future<void> _joinAcceptedCall(String callId, String userId) async {
+    if (_activeSession?.call.id == callId || _joiningCallId == callId) return;
+    _joiningCallId = callId;
+    try {
+      final doc = await _calls.doc(callId).get();
+      final call = doc.exists ? CallModel.fromDoc(doc) : null;
+      if (call == null ||
+          call.calleeId != userId ||
+          call.status != CallStatus.ringing ||
+          _activeSession != null) {
+        // The caller gave up before the app finished opening.
+        _nativeCallIds.remove(callId);
+        CallNotifications.end(callId);
+        _showMessage('The call has ended');
+        return;
+      }
+      _present(call, userId)?.startAccepted();
+    } catch (e) {
+      debugPrint('CallService: joining call $callId failed: $e');
+      _nativeCallIds.remove(callId);
+      CallNotifications.end(callId);
+    } finally {
+      _joiningCallId = null;
+    }
+  }
+
+  void _showMessage(String text) {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+    ScaffoldMessenger.maybeOf(context)
+        ?.showSnackBar(SnackBar(content: Text(text)));
   }
 
   CallSession? _present(CallModel call, String userId) {
@@ -158,6 +288,9 @@ class CallService {
       selfId: userId,
       onFinished: (session) {
         if (identical(_activeSession, session)) _activeSession = null;
+        if (_nativeCallIds.remove(session.call.id)) {
+          CallNotifications.end(session.call.id);
+        }
       },
     );
     _activeSession = session;
@@ -170,8 +303,10 @@ class CallService {
     return session;
   }
 
-  Future<void> _closeRingingCall(String callId, CallStatus status) async {
-    final ref = _calls.doc(callId);
+  /// Ends a call that is still ringing, e.g. declined from the native call
+  /// screen. Static so the push background isolate can use it.
+  static Future<void> closeRingingCall(String callId, CallStatus status) async {
+    final ref = FirebaseFirestore.instance.collection('calls').doc(callId);
     try {
       await FirebaseFirestore.instance.runTransaction((tx) async {
         final snapshot = await tx.get(ref);

@@ -19,6 +19,9 @@ signaling channel, so no extra backend is needed.
 - Mute, speaker, camera on/off, front/back camera switch, draggable self-view
 - Remote "muted" and "camera off" indicators
 - Busy detection (callee already on a call), 45 s ring timeout -> missed call
+- **Rings even when the app is closed** (Android): FCM push -> full-screen
+  incoming call screen over the lock screen, Accept / Decline
+- Push notifications for new messages and missed calls
 - Automatic recovery when the network changes (Wi-Fi <-> mobile) via ICE restart
 - Calls keep running in the background (Android foreground service, iOS background audio)
 - Proximity sensor turns the screen off during earpiece calls
@@ -35,11 +38,27 @@ lib/
 │   ├── call_session.dart    # One call: WebRTC peer connection + Firestore signaling
 │   ├── call_service.dart    # App-wide: start calls, incoming listener, busy handling, history
 │   ├── call_platform.dart   # Ringtone, audio routing, screen handling, foreground service
+│   ├── call_notifications.dart # System incoming-call screen (flutter_callkit_incoming)
 │   └── sdp_utils.dart       # Opus "HD voice" SDP tuning
 └── views/call/
     ├── call_screen.dart          # In-call UI (incoming, outgoing, connected)
     └── call_history_screen.dart  # Calls tab
+lib/services/notification/
+└── push_notification_service.dart  # FCM token, foreground notifications, background handler
+functions/index.js                  # Cloud Functions that send the pushes
+firestore.rules                     # Security rules (includes `calls`)
 ```
+
+## Push notifications
+
+| Event | Cloud Function | What the phone shows |
+|---|---|---|
+| New message in `chats/{id}/messages` | `onMessageCreated` | Notification (sender name + text); tap opens the chat |
+| New ringing `calls/{id}` | `onCallCreated` | App open: in-app call screen. App in background or closed: system full-screen call screen |
+| Call stops ringing | `onCallUpdated` | Dismisses the ringing screen; "Missed call" notification if nobody answered |
+
+The app stores each device's FCM token in `users/{uid}.fcmTokens`. Dead tokens
+are removed by the functions after a failed send.
 
 ## How a call works
 
@@ -81,6 +100,28 @@ hang up                ──►  status: ended, duration, endedBy
 ```
 
 ## Setup
+
+### 0. Deploy rules and functions (required)
+
+Without the `calls` rules every call fails immediately with
+"Call failed: calls are not allowed by the server rules". Without the
+functions, nothing rings while the app is closed.
+
+```bash
+firebase login --reauth
+firebase deploy --only firestore:rules,firestore:indexes,functions
+```
+
+- Cloud Functions need the **Blaze** (pay-as-you-go) plan. The free quota
+  (2M invocations/month) covers a small app.
+- `firestore.rules` replaces the rules in the console. If you edited rules
+  there, merge them into the file first.
+- Firestore triggers must run in the database's region. If the deploy says the
+  region doesn't match, set `REGION` in `functions/index.js` to your Firestore
+  location (Firebase console -> Firestore).
+- Xiaomi / Redmi / POCO, Oppo, Vivo and similar phones kill background apps
+  aggressively. For calls to ring while the app is closed, enable **Autostart**
+  for Chatnook and set battery saver to **No restrictions**.
 
 ### 1. Firestore index (call history)
 
@@ -166,9 +207,10 @@ Unit tests: `flutter test test/services/call`
 
 ## Limitations / next steps
 
-- **Ringing when the app is closed** requires push notifications: FCM (Android)
-  / PushKit + CallKit (iOS) triggered by a Cloud Function on `calls` create.
-  Today incoming calls ring while the app is open or recently backgrounded.
+- **iOS, app closed:** an incoming call arrives as a normal notification;
+  tapping it opens the app, which rings. A native CallKit screen on a killed
+  iOS app needs PushKit VoIP pushes (Apple VoIP certificate + APNs sender),
+  which are not set up.
 - On Android 13+, the ongoing-call notification is only visible if the user has
   granted notification permission; the call itself works either way.
 - 1:1 only. Group calls would need an SFU (e.g. LiveKit) instead of peer-to-peer.

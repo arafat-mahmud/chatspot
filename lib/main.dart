@@ -4,6 +4,7 @@ import 'package:chatspot/dashboard/menu/components/settings/theme.dart';
 import 'package:chatspot/services/chat_initialization_service.dart';
 import 'package:chatspot/services/chat_cache_service.dart';
 import 'package:chatspot/services/call/call_service.dart';
+import 'package:chatspot/services/notification/push_notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -24,6 +25,10 @@ void main() async {
   }
 
   await ThemeService.init();
+  await PushNotificationService.instance.init();
+  // Before runApp: tapping Accept on the system call screen can be what
+  // launched the app.
+  CallService.instance.init();
 
   runApp(MyApp());
 }
@@ -42,6 +47,7 @@ class MyApp extends StatelessWidget {
           WidgetsBinding.instance.addPostFrameCallback((_) async {
             // Listen for incoming calls as soon as the navigator exists.
             CallService.instance.attach(userId);
+            PushNotificationService.instance.attach(userId);
             await ChatInitializationService.initializeUserChats();
             // Initialize chat cache after chat initialization
             await ChatCacheService().initializeCache();
@@ -50,6 +56,7 @@ class MyApp extends StatelessWidget {
           // Clear cache when user signs out
           WidgetsBinding.instance.addPostFrameCallback((_) {
             CallService.instance.detach();
+            PushNotificationService.instance.detach();
             ChatCacheService().clearAndReinitialize();
           });
         }
